@@ -14,7 +14,250 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      knowledge_edges: {
+        Row: {
+          created_at: string
+          id: string
+          relationship: string
+          source_node_id: string
+          strength: number | null
+          target_node_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          relationship: string
+          source_node_id: string
+          strength?: number | null
+          target_node_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          relationship?: string
+          source_node_id?: string
+          strength?: number | null
+          target_node_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_edges_source_node_id_fkey"
+            columns: ["source_node_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_edges_target_node_id_fkey"
+            columns: ["target_node_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_nodes: {
+        Row: {
+          created_at: string
+          id: string
+          last_practiced_at: string | null
+          mastery_level: number | null
+          problems_attempted: number | null
+          problems_correct: number | null
+          subject: string
+          topic: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_practiced_at?: string | null
+          mastery_level?: number | null
+          problems_attempted?: number | null
+          problems_correct?: number | null
+          subject: string
+          topic: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_practiced_at?: string | null
+          mastery_level?: number | null
+          problems_attempted?: number | null
+          problems_correct?: number | null
+          subject?: string
+          topic?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      problems: {
+        Row: {
+          created_at: string
+          difficulty_estimate: string | null
+          id: string
+          input_image_url: string | null
+          input_text: string | null
+          input_type: string
+          session_id: string
+          status: string | null
+          subject: string | null
+          topic: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          difficulty_estimate?: string | null
+          id?: string
+          input_image_url?: string | null
+          input_text?: string | null
+          input_type: string
+          session_id: string
+          status?: string | null
+          subject?: string | null
+          topic?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          difficulty_estimate?: string | null
+          id?: string
+          input_image_url?: string | null
+          input_text?: string | null
+          input_type?: string
+          session_id?: string
+          status?: string | null
+          subject?: string | null
+          topic?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "problems_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "study_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          education_level: string | null
+          id: string
+          preferred_mode: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          education_level?: string | null
+          id?: string
+          preferred_mode?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          education_level?: string | null
+          id?: string
+          preferred_mode?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      solutions: {
+        Row: {
+          agent_role: string
+          confidence_score: number | null
+          content: string
+          created_at: string
+          id: string
+          latex_content: string | null
+          problem_id: string
+          step_data: Json | null
+          user_id: string
+          verification_passed: boolean | null
+        }
+        Insert: {
+          agent_role: string
+          confidence_score?: number | null
+          content: string
+          created_at?: string
+          id?: string
+          latex_content?: string | null
+          problem_id: string
+          step_data?: Json | null
+          user_id: string
+          verification_passed?: boolean | null
+        }
+        Update: {
+          agent_role?: string
+          confidence_score?: number | null
+          content?: string
+          created_at?: string
+          id?: string
+          latex_content?: string | null
+          problem_id?: string
+          step_data?: Json | null
+          user_id?: string
+          verification_passed?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solutions_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          status: string | null
+          subject: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          status?: string | null
+          subject?: string | null
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          status?: string | null
+          subject?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
