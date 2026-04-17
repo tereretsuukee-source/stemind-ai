@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { ArrowRight, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -37,17 +38,21 @@ const CTASection = () => {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button
                 size="lg"
+                asChild
                 className="bg-white text-primary hover:bg-white/90 text-base px-8 py-6 font-semibold"
               >
-                Get Started Free
-                <ArrowRight className="ml-2 w-5 h-5" />
+                <Link to="/auth">
+                  Get Started Free
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Link>
               </Button>
               <Button
                 size="lg"
                 variant="outline"
+                asChild
                 className="border-white/30 text-white hover:bg-white/10 text-base px-8 py-6"
               >
-                View Pricing
+                <Link to="/app/dashboard">Open App</Link>
               </Button>
             </div>
           </div>

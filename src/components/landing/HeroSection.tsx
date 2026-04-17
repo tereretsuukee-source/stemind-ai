@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { ArrowRight, ShieldCheck, Camera, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -70,17 +71,21 @@ const HeroSection = () => {
           >
             <Button
               size="lg"
+              asChild
               className="bg-gradient-stemind hover:opacity-90 transition-opacity text-primary-foreground text-base px-8 py-6 glow-primary"
             >
-              Start Solving Free
-              <ArrowRight className="ml-2 w-5 h-5" />
+              <Link to="/auth">
+                Start Solving Free
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Link>
             </Button>
             <Button
               size="lg"
               variant="outline"
+              asChild
               className="text-base px-8 py-6 border-border text-foreground hover:bg-muted"
             >
-              Watch Demo
+              <a href="#how-it-works">See How It Works</a>
             </Button>
           </motion.div>
 

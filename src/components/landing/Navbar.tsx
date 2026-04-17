@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Brain, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,11 +43,11 @@ const Navbar = () => {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" size="sm" className="text-muted-foreground">
-            Log in
+          <Button variant="ghost" size="sm" className="text-muted-foreground" asChild>
+            <Link to="/auth">Log in</Link>
           </Button>
-          <Button size="sm" className="bg-gradient-stemind hover:opacity-90 transition-opacity text-primary-foreground">
-            Get Started Free
+          <Button size="sm" className="bg-gradient-stemind hover:opacity-90 transition-opacity text-primary-foreground" asChild>
+            <Link to="/auth">Get Started Free</Link>
           </Button>
         </div>
 
@@ -78,11 +79,11 @@ const Navbar = () => {
                 </a>
               ))}
               <div className="flex flex-col gap-2 pt-2">
-                <Button variant="ghost" className="justify-start text-muted-foreground">
-                  Log in
+                <Button variant="ghost" className="justify-start text-muted-foreground" asChild>
+                  <Link to="/auth" onClick={() => setMobileOpen(false)}>Log in</Link>
                 </Button>
-                <Button className="bg-gradient-stemind text-primary-foreground">
-                  Get Started Free
+                <Button className="bg-gradient-stemind text-primary-foreground" asChild>
+                  <Link to="/auth" onClick={() => setMobileOpen(false)}>Get Started Free</Link>
                 </Button>
               </div>
             </div>
