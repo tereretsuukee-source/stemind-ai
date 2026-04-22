@@ -129,6 +129,7 @@ const SessionDetail = () => {
   const [input, setInput] = useState("");
   const [selectedProblemId, setSelectedProblemId] = useState<number | null>(null);
   const [workspaceOpen, setWorkspaceOpen] = useState(true);
+  const [mobileTab, setMobileTab] = useState<"chat" | "workspace">("chat");
   const scrollRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
