@@ -14,6 +14,7 @@ const navItems = [
 
 const AppLayout = () => {
   const { user, loading } = useAuth();
+  const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   if (loading) {
