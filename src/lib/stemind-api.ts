@@ -113,6 +113,8 @@ export const sessionsApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  delete: (sessionId: number) =>
+    request<void>(`/api/sessions/${sessionId}`, { method: "DELETE" }),
 };
 
 // ---------- Problems ----------
