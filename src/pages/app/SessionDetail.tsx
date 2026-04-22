@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -11,6 +11,8 @@ import {
   ChevronRight,
   PanelRightClose,
   PanelRight,
+  GitCompare,
+  AlertTriangle,
 } from "lucide-react";
 import "katex/dist/katex.min.css";
 import { BlockMath, InlineMath } from "react-katex";
@@ -23,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -52,8 +55,103 @@ const roleMeta: Record<string, { label: string; color: string }> = {
   final: { label: "Final Answer", color: "text-secondary" },
 };
 
+// ── Compare view: side-by-side agent differences ─────────────────
+const CompareSteps = ({ solutions }: { solutions: Solution[] }) => {
+  const agents = ["solver", "critic", "verifier"] as const;
+  const agentSolutions = agents
+    .map((role) => solutions.find((s) => s.agentRole === role))
+    .filter(Boolean) as Solution[];
+
+  if (agentSolutions.length < 2) {
+    return (
+      <div className="p-4 text-sm text-muted-foreground text-center">
+        Need at least 2 agent steps to compare.
+      </div>
+    );
+  }
+
+  // Find where confidence dropped or verification failed
+  const hasIssue = (sol: Solution) =>
+    sol.verificationPassed === false ||
+    (sol.confidenceScore != null && sol.confidenceScore < 0.8);
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
+        <GitCompare className="w-3.5 h-3.5" />
+        <span>Side-by-side agent comparison</span>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3">
+        {agentSolutions.map((sol, idx) => {
+          const meta = roleMeta[sol.agentRole] ?? {
+            label: sol.agentRole,
+            color: "text-foreground",
+          };
+          const flagged = hasIssue(sol);
+
+          return (
+            <div
+              key={sol.id}
+              className={cn(
+                "rounded-lg border p-3 text-sm",
+                flagged
+                  ? "border-destructive/50 bg-destructive/5"
+                  : "border-border/60 bg-card"
+              )}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span className={cn("font-semibold text-xs", meta.color)}>
+                  {meta.label}
+                </span>
+                {sol.confidenceScore != null && (
+                  <span
+                    className={cn(
+                      "text-[11px] ml-auto",
+                      sol.confidenceScore < 0.8
+                        ? "text-destructive font-medium"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {(sol.confidenceScore * 100).toFixed(0)}%
+                  </span>
+                )}
+                {sol.verificationPassed === false && (
+                  <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
+                )}
+                {sol.verificationPassed === true && (
+                  <ShieldCheck className="w-3.5 h-3.5 text-secondary" />
+                )}
+              </div>
+              <div className="prose prose-sm dark:prose-invert max-w-none text-xs leading-relaxed">
+                {renderMath(sol.content)}
+              </div>
+
+              {/* Show diff hint when there's a previous agent */}
+              {idx > 0 && flagged && (
+                <div className="mt-2 pt-2 border-t border-destructive/20 text-[11px] text-destructive flex items-center gap-1.5">
+                  <AlertTriangle className="w-3 h-3" />
+                  {sol.verificationPassed === false
+                    ? "Verification failed — check reasoning above"
+                    : "Confidence dropped from previous step"}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 // ── Workspace panel for a single problem ─────────────────────────
-const WorkspaceSteps = ({ solutions }: { solutions: Solution[] }) => {
+const WorkspaceSteps = ({
+  solutions,
+  compareMode,
+}: {
+  solutions: Solution[];
+  compareMode: boolean;
+}) => {
   const [expandedStep, setExpandedStep] = useState<number | null>(null);
 
   if (solutions.length === 0) {
@@ -63,6 +161,10 @@ const WorkspaceSteps = ({ solutions }: { solutions: Solution[] }) => {
         Waiting for agents…
       </div>
     );
+  }
+
+  if (compareMode) {
+    return <CompareSteps solutions={solutions} />;
   }
 
   return (
@@ -130,6 +232,7 @@ const SessionDetail = () => {
   const [selectedProblemId, setSelectedProblemId] = useState<number | null>(null);
   const [workspaceOpen, setWorkspaceOpen] = useState(true);
   const [mobileTab, setMobileTab] = useState<"chat" | "workspace">("chat");
+  const [compareMode, setCompareMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
@@ -354,17 +457,62 @@ const SessionDetail = () => {
   );
 
   // ── Workspace panel ───────────────────────────────────────────
+  // Auto-suggest compare mode when confidence drops or verification fails
+  const shouldSuggestCompare = useMemo(() => {
+    return selectedSolutions.some(
+      (s) =>
+        s.verificationPassed === false ||
+        (s.confidenceScore != null && s.confidenceScore < 0.8)
+    );
+  }, [selectedSolutions]);
+
   const workspacePanel = (
     <div className="flex flex-col h-full">
       <header className="px-4 py-3 border-b border-border shrink-0">
-        <h2 className="font-display font-semibold text-sm">Workspace</h2>
-        <p className="text-[11px] text-muted-foreground">
-          Step-by-step agent reasoning
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-display font-semibold text-sm">Workspace</h2>
+            <p className="text-[11px] text-muted-foreground">
+              Step-by-step agent reasoning
+            </p>
+          </div>
+          {selectedSolutions.length >= 2 && (
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="compare-toggle"
+                className={cn(
+                  "text-[11px] font-medium cursor-pointer flex items-center gap-1.5",
+                  compareMode ? "text-primary" : "text-muted-foreground"
+                )}
+              >
+                <GitCompare className="w-3 h-3" />
+                Compare
+              </label>
+              <Switch
+                id="compare-toggle"
+                checked={compareMode}
+                onCheckedChange={setCompareMode}
+                className="scale-75"
+              />
+            </div>
+          )}
+        </div>
+        {shouldSuggestCompare && !compareMode && selectedSolutions.length >= 2 && (
+          <button
+            onClick={() => setCompareMode(true)}
+            className="mt-2 w-full flex items-center gap-1.5 text-[11px] text-destructive bg-destructive/10 rounded-md px-2.5 py-1.5 hover:bg-destructive/15 transition-colors"
+          >
+            <AlertTriangle className="w-3 h-3" />
+            Confidence drop or verification issue detected — compare steps
+          </button>
+        )}
       </header>
       <ScrollArea className="flex-1">
         {selectedProblemId ? (
-          <WorkspaceSteps solutions={selectedSolutions} />
+          <WorkspaceSteps
+            solutions={selectedSolutions}
+            compareMode={compareMode}
+          />
         ) : (
           <div className="flex items-center justify-center h-full p-8 text-center text-muted-foreground text-sm">
             Select a problem in the chat to see the Solver → Critic → Verifier
