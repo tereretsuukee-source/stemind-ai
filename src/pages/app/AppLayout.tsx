@@ -93,9 +93,14 @@ const AppLayout = () => {
               STEM<span className="text-gradient">ind</span>
             </span>
           </NavLink>
-          <Button variant="ghost" size="icon" onClick={handleSignOut}>
-            <LogOut className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={toggleTheme}>
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
         <div className="flex border-t border-border">
           {navItems.map((item) => (
