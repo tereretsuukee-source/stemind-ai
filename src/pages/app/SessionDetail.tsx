@@ -55,8 +55,103 @@ const roleMeta: Record<string, { label: string; color: string }> = {
   final: { label: "Final Answer", color: "text-secondary" },
 };
 
+// ── Compare view: side-by-side agent differences ─────────────────
+const CompareSteps = ({ solutions }: { solutions: Solution[] }) => {
+  const agents = ["solver", "critic", "verifier"] as const;
+  const agentSolutions = agents
+    .map((role) => solutions.find((s) => s.agentRole === role))
+    .filter(Boolean) as Solution[];
+
+  if (agentSolutions.length < 2) {
+    return (
+      <div className="p-4 text-sm text-muted-foreground text-center">
+        Need at least 2 agent steps to compare.
+      </div>
+    );
+  }
+
+  // Find where confidence dropped or verification failed
+  const hasIssue = (sol: Solution) =>
+    sol.verificationPassed === false ||
+    (sol.confidenceScore != null && sol.confidenceScore < 0.8);
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
+        <GitCompare className="w-3.5 h-3.5" />
+        <span>Side-by-side agent comparison</span>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3">
+        {agentSolutions.map((sol, idx) => {
+          const meta = roleMeta[sol.agentRole] ?? {
+            label: sol.agentRole,
+            color: "text-foreground",
+          };
+          const flagged = hasIssue(sol);
+
+          return (
+            <div
+              key={sol.id}
+              className={cn(
+                "rounded-lg border p-3 text-sm",
+                flagged
+                  ? "border-destructive/50 bg-destructive/5"
+                  : "border-border/60 bg-card"
+              )}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span className={cn("font-semibold text-xs", meta.color)}>
+                  {meta.label}
+                </span>
+                {sol.confidenceScore != null && (
+                  <span
+                    className={cn(
+                      "text-[11px] ml-auto",
+                      sol.confidenceScore < 0.8
+                        ? "text-destructive font-medium"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {(sol.confidenceScore * 100).toFixed(0)}%
+                  </span>
+                )}
+                {sol.verificationPassed === false && (
+                  <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
+                )}
+                {sol.verificationPassed === true && (
+                  <ShieldCheck className="w-3.5 h-3.5 text-secondary" />
+                )}
+              </div>
+              <div className="prose prose-sm dark:prose-invert max-w-none text-xs leading-relaxed">
+                {renderMath(sol.content)}
+              </div>
+
+              {/* Show diff hint when there's a previous agent */}
+              {idx > 0 && flagged && (
+                <div className="mt-2 pt-2 border-t border-destructive/20 text-[11px] text-destructive flex items-center gap-1.5">
+                  <AlertTriangle className="w-3 h-3" />
+                  {sol.verificationPassed === false
+                    ? "Verification failed — check reasoning above"
+                    : "Confidence dropped from previous step"}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 // ── Workspace panel for a single problem ─────────────────────────
-const WorkspaceSteps = ({ solutions }: { solutions: Solution[] }) => {
+const WorkspaceSteps = ({
+  solutions,
+  compareMode,
+}: {
+  solutions: Solution[];
+  compareMode: boolean;
+}) => {
   const [expandedStep, setExpandedStep] = useState<number | null>(null);
 
   if (solutions.length === 0) {
@@ -66,6 +161,10 @@ const WorkspaceSteps = ({ solutions }: { solutions: Solution[] }) => {
         Waiting for agents…
       </div>
     );
+  }
+
+  if (compareMode) {
+    return <CompareSteps solutions={solutions} />;
   }
 
   return (
