@@ -56,6 +56,16 @@ const Sessions = () => {
       toast({ title: "Couldn't create session", description: e.message, variant: "destructive" }),
   });
 
+  const deleteSession = useMutation({
+    mutationFn: (sessionId: number) => sessionsApi.delete(sessionId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sessions", user?.id] });
+      toast({ title: "Session deleted" });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Couldn't delete session", description: e.message, variant: "destructive" }),
+  });
+
   const handleCreate = (e: FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
