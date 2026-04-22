@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useNavigate, Navigate } from "react-router-dom";
-import { Brain, LayoutDashboard, MessagesSquare, Network, LogOut, Loader2 } from "lucide-react";
+import { Brain, LayoutDashboard, MessagesSquare, Network, LogOut, Loader2, Moon, Sun } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,7 @@ const navItems = [
 
 const AppLayout = () => {
   const { user, loading } = useAuth();
+  const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   if (loading) {
@@ -65,10 +67,14 @@ const AppLayout = () => {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-border">
-          <div className="px-3 py-2 mb-2 text-xs text-muted-foreground truncate">
+        <div className="p-3 border-t border-border space-y-1">
+          <div className="px-3 py-2 text-xs text-muted-foreground truncate">
             {user.email}
           </div>
+          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={toggleTheme}>
+            {theme === "dark" ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
+            {theme === "dark" ? "Light mode" : "Dark mode"}
+          </Button>
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleSignOut}>
             <LogOut className="w-4 h-4 mr-2" />
             Sign out
@@ -87,9 +93,14 @@ const AppLayout = () => {
               STEM<span className="text-gradient">ind</span>
             </span>
           </NavLink>
-          <Button variant="ghost" size="icon" onClick={handleSignOut}>
-            <LogOut className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={toggleTheme}>
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
         <div className="flex border-t border-border">
           {navItems.map((item) => (
