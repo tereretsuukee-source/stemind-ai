@@ -67,10 +67,14 @@ const AppLayout = () => {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-border">
-          <div className="px-3 py-2 mb-2 text-xs text-muted-foreground truncate">
+        <div className="p-3 border-t border-border space-y-1">
+          <div className="px-3 py-2 text-xs text-muted-foreground truncate">
             {user.email}
           </div>
+          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={toggleTheme}>
+            {theme === "dark" ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
+            {theme === "dark" ? "Light mode" : "Dark mode"}
+          </Button>
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleSignOut}>
             <LogOut className="w-4 h-4 mr-2" />
             Sign out
