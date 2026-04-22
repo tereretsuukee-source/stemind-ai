@@ -148,19 +148,50 @@ const Sessions = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.04 }}
           >
-            <Link to={`/app/sessions/${s.id}`}>
-              <Card className="p-5 border-border/60 hover:border-primary/40 transition-colors group cursor-pointer">
+            <Card className="p-5 border-border/60 hover:border-primary/40 transition-colors group">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
+                  <Link to={`/app/sessions/${s.id}`} className="min-w-0 flex-1">
                     <h3 className="font-display font-semibold truncate">{s.title}</h3>
                     <div className="text-xs text-muted-foreground mt-1">
                       {s.subject || "General"} · {new Date(s.createdAt).toLocaleDateString()}
                     </div>
+                  </Link>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete session?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete "{s.title}" and all its problems. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteSession.mutate(s.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    <Link to={`/app/sessions/${s.id}`}>
+                      <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </Link>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
                 </div>
               </Card>
-            </Link>
           </motion.div>
         ))}
       </div>
