@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useNavigate, Navigate } from "react-router-dom";
-import { Brain, LayoutDashboard, MessagesSquare, Network, LogOut, Loader2 } from "lucide-react";
+import { Brain, LayoutDashboard, MessagesSquare, Network, LogOut, Loader2, Moon, Sun } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
