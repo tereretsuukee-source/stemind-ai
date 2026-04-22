@@ -457,17 +457,62 @@ const SessionDetail = () => {
   );
 
   // ── Workspace panel ───────────────────────────────────────────
+  // Auto-suggest compare mode when confidence drops or verification fails
+  const shouldSuggestCompare = useMemo(() => {
+    return selectedSolutions.some(
+      (s) =>
+        s.verificationPassed === false ||
+        (s.confidenceScore != null && s.confidenceScore < 0.8)
+    );
+  }, [selectedSolutions]);
+
   const workspacePanel = (
     <div className="flex flex-col h-full">
       <header className="px-4 py-3 border-b border-border shrink-0">
-        <h2 className="font-display font-semibold text-sm">Workspace</h2>
-        <p className="text-[11px] text-muted-foreground">
-          Step-by-step agent reasoning
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-display font-semibold text-sm">Workspace</h2>
+            <p className="text-[11px] text-muted-foreground">
+              Step-by-step agent reasoning
+            </p>
+          </div>
+          {selectedSolutions.length >= 2 && (
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="compare-toggle"
+                className={cn(
+                  "text-[11px] font-medium cursor-pointer flex items-center gap-1.5",
+                  compareMode ? "text-primary" : "text-muted-foreground"
+                )}
+              >
+                <GitCompare className="w-3 h-3" />
+                Compare
+              </label>
+              <Switch
+                id="compare-toggle"
+                checked={compareMode}
+                onCheckedChange={setCompareMode}
+                className="scale-75"
+              />
+            </div>
+          )}
+        </div>
+        {shouldSuggestCompare && !compareMode && selectedSolutions.length >= 2 && (
+          <button
+            onClick={() => setCompareMode(true)}
+            className="mt-2 w-full flex items-center gap-1.5 text-[11px] text-destructive bg-destructive/10 rounded-md px-2.5 py-1.5 hover:bg-destructive/15 transition-colors"
+          >
+            <AlertTriangle className="w-3 h-3" />
+            Confidence drop or verification issue detected — compare steps
+          </button>
+        )}
       </header>
       <ScrollArea className="flex-1">
         {selectedProblemId ? (
-          <WorkspaceSteps solutions={selectedSolutions} />
+          <WorkspaceSteps
+            solutions={selectedSolutions}
+            compareMode={compareMode}
+          />
         ) : (
           <div className="flex items-center justify-center h-full p-8 text-center text-muted-foreground text-sm">
             Select a problem in the chat to see the Solver → Critic → Verifier
