@@ -2,7 +2,7 @@ import { FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Plus, MessagesSquare, Loader2, ArrowRight } from "lucide-react";
+import { Plus, MessagesSquare, Loader2, ArrowRight, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { sessionsApi } from "@/lib/stemind-api";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 
 const Sessions = () => {
