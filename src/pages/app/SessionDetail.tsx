@@ -312,7 +312,9 @@ const SessionDetail = () => {
       }),
     onSuccess: () => {
       setInput("");
+      // Immediately refetch both queries so the user sees the new problem fast
       qc.invalidateQueries({ queryKey: ["problems", sessionId] });
+      qc.invalidateQueries({ queryKey: ["solutions", sessionId] });
     },
     onError: (e: Error) =>
       toast({
