@@ -240,22 +240,51 @@ const SessionDetail = () => {
     queryKey: ["problems", sessionId],
     queryFn: () => problemsApi.listForSession(sessionId),
     enabled: !!sessionId,
-    refetchInterval: 4000,
+    refetchInterval: 3000,
   });
 
+  // Track which problems already have a final/verified solution so we skip re-fetching them
+  const [resolvedCache, setResolvedCache] = useState<Record<number, Solution[]>>({});
+
   const solutionsQueries = useQuery({
-    queryKey: ["solutions", problems?.map((p) => p.id).join(",")],
+    queryKey: ["solutions", sessionId, problems?.map((p) => p.id).join(",")],
     queryFn: async () => {
       if (!problems) return {};
-      const entries = await Promise.all(
-        problems.map(
+      // Only fetch solutions for unresolved problems + selected problem
+      const unresolvedProblems = problems.filter(
+        (p) => !resolvedCache[p.id] || p.id === selectedProblemId
+      );
+      const freshEntries = await Promise.all(
+        unresolvedProblems.map(
           async (p) => [p.id, await problemsApi.getSolutions(p.id)] as const
         )
       );
-      return Object.fromEntries(entries) as Record<number, Solution[]>;
+      const freshMap = Object.fromEntries(freshEntries) as Record<number, Solution[]>;
+
+      // Mark newly resolved problems (have a final or verifier solution)
+      const newResolved = { ...resolvedCache };
+      for (const [id, sols] of Object.entries(freshMap)) {
+        const hasFinal = sols.some(
+          (s) => s.agentRole === "final" || s.agentRole === "verifier"
+        );
+        if (hasFinal) newResolved[Number(id)] = sols;
+      }
+      setResolvedCache(newResolved);
+
+      return { ...newResolved, ...freshMap };
     },
     enabled: !!problems && problems.length > 0,
-    refetchInterval: 4000,
+    // Poll faster (2s) when there are unresolved problems, slower (8s) when all done
+    refetchInterval: (query) => {
+      if (!problems) return false;
+      const data = query.state.data as Record<number, Solution[]> | undefined;
+      if (!data) return 2000;
+      const allResolved = problems.every((p) => {
+        const sols = data[p.id];
+        return sols?.some((s) => s.agentRole === "final" || s.agentRole === "verifier");
+      });
+      return allResolved ? 8000 : 2000;
+    },
   });
 
   // Auto-select the latest problem
