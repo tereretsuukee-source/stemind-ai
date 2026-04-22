@@ -377,7 +377,6 @@ const SessionDetail = () => {
 
   // ── Mobile: tabs instead of split ─────────────────────────────
   if (isMobile) {
-    const [mobileTab, setMobileTab] = useState<"chat" | "workspace">("chat");
     return (
       <div className="flex flex-col h-screen">
         <div className="flex border-b border-border shrink-0">
