@@ -2,14 +2,51 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Brain, Flame, Target, TrendingUp, BookOpen, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { dashboardApi } from "@/lib/stemind-api";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 
 const Dashboard = () => {
   const { user } = useAuth();
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["dashboard", user?.id],
-    queryFn: () => dashboardApi.stats(user!.id),
+    queryFn: async () => {
+      const userId = user!.id;
+
+      const [sessionsRes, problemsRes, knowledgeRes] = await Promise.all([
+        supabase.from("study_sessions").select("id", { count: "exact" }).eq("user_id", userId),
+        supabase.from("problems").select("id, created_at", { count: "exact" }).eq("user_id", userId),
+        supabase.from("knowledge_nodes").select("*").eq("user_id", userId),
+      ]);
+
+      const totalSessions = sessionsRes.count ?? 0;
+      const totalProblems = problemsRes.count ?? 0;
+      const nodes = knowledgeRes.data ?? [];
+
+      const avgMastery = nodes.length > 0
+        ? nodes.reduce((sum, n) => sum + (n.mastery_level ?? 0), 0) / nodes.length
+        : 0;
+
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const weeklyProblems = (problemsRes.data ?? []).filter(
+        (p) => new Date(p.created_at) >= oneWeekAgo
+      ).length;
+
+      const sorted = [...nodes].sort((a, b) => (b.mastery_level ?? 0) - (a.mastery_level ?? 0));
+      const strongTopics = sorted.slice(0, 5).map((n) => ({ topic: n.topic, mastery: n.mastery_level ?? 0 }));
+      const weakTopics = sorted.slice(-5).reverse().map((n) => ({ topic: n.topic, mastery: n.mastery_level ?? 0 }));
+
+      return {
+        totalProblems,
+        totalSessions,
+        averageMastery: avgMastery,
+        weeklyProblems,
+        topicsStudied: nodes.length,
+        strongTopics,
+        weakTopics,
+      };
+    },
     enabled: !!user,
   });
 
@@ -23,9 +60,7 @@ const Dashboard = () => {
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto">
       <header className="mb-10">
-        <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-2">
-          Dashboard
-        </h1>
+        <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-2">Dashboard</h1>
         <p className="text-muted-foreground">Your learning, verified.</p>
       </header>
 
@@ -37,18 +72,13 @@ const Dashboard = () => {
 
       {error && (
         <Card className="p-4 border-destructive/40 bg-destructive/5 text-sm text-destructive mb-6">
-          Couldn't reach STEMind backend: {(error as Error).message}
+          Couldn't load dashboard: {(error as Error).message}
         </Card>
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         {stats.map((s, i) => (
-          <motion.div
-            key={s.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-          >
+          <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
             <Card className="p-5 border-border/60 hover:border-border transition-colors">
               <s.icon className={`w-5 h-5 mb-3 ${s.accent}`} />
               <div className="text-2xl md:text-3xl font-display font-bold">{s.value}</div>
