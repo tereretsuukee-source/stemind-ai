@@ -4,28 +4,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Plus, MessagesSquare, Loader2, ArrowRight, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { sessionsApi } from "@/lib/stemind-api";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 
@@ -38,13 +27,27 @@ const Sessions = () => {
 
   const { data: sessions, isLoading } = useQuery({
     queryKey: ["sessions", user?.id],
-    queryFn: () => sessionsApi.list(user!.id),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("study_sessions")
+        .select("*")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
     enabled: !!user,
   });
 
   const create = useMutation({
-    mutationFn: (input: { title: string; subject?: string }) =>
-      sessionsApi.create({ userId: user!.id, ...input }),
+    mutationFn: async (input: { title: string; subject?: string }) => {
+      const { error } = await supabase.from("study_sessions").insert({
+        user_id: user!.id,
+        title: input.title,
+        subject: input.subject || null,
+      });
+      if (error) throw error;
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sessions", user?.id] });
       setOpen(false);
@@ -57,7 +60,10 @@ const Sessions = () => {
   });
 
   const deleteSession = useMutation({
-    mutationFn: (sessionId: number) => sessionsApi.delete(sessionId),
+    mutationFn: async (sessionId: string) => {
+      const { error } = await supabase.from("study_sessions").delete().eq("id", sessionId);
+      if (error) throw error;
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sessions", user?.id] });
       toast({ title: "Session deleted" });
@@ -92,28 +98,13 @@ const Sessions = () => {
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Calculus midterm review"
-                  required
-                />
+                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Calculus midterm review" required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="subject">Subject (optional)</Label>
-                <Input
-                  id="subject"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  placeholder="Calculus"
-                />
+                <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Calculus" />
               </div>
-              <Button
-                type="submit"
-                disabled={create.isPending}
-                className="w-full bg-gradient-stemind text-primary-foreground hover:opacity-90"
-              >
+              <Button type="submit" disabled={create.isPending} className="w-full bg-gradient-stemind text-primary-foreground hover:opacity-90">
                 {create.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create session"}
               </Button>
             </form>
@@ -132,7 +123,7 @@ const Sessions = () => {
           <MessagesSquare className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
           <h3 className="font-display font-semibold mb-1">No sessions yet</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Start a session to submit problems and get triple-verified solutions.
+            Start a session to submit problems and get AI-powered solutions.
           </p>
           <Button onClick={() => setOpen(true)} className="bg-gradient-stemind text-primary-foreground hover:opacity-90">
             <Plus className="w-4 h-4 mr-2" /> Create your first session
@@ -142,56 +133,46 @@ const Sessions = () => {
 
       <div className="grid md:grid-cols-2 gap-3">
         {sessions?.map((s, i) => (
-          <motion.div
-            key={s.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.04 }}
-          >
+          <motion.div key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
             <Card className="p-5 border-border/60 hover:border-primary/40 transition-colors group">
-                <div className="flex items-start justify-between gap-4">
-                  <Link to={`/app/sessions/${s.id}`} className="min-w-0 flex-1">
-                    <h3 className="font-display font-semibold truncate">{s.title}</h3>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {s.subject || "General"} · {new Date(s.createdAt).toLocaleDateString()}
-                    </div>
-                  </Link>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete session?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will permanently delete "{s.title}" and all its problems. This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteSession.mutate(s.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                    <Link to={`/app/sessions/${s.id}`}>
-                      <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                    </Link>
+              <div className="flex items-start justify-between gap-4">
+                <Link to={`/app/sessions/${s.id}`} className="min-w-0 flex-1">
+                  <h3 className="font-display font-semibold truncate">{s.title}</h3>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {s.subject || "General"} · {new Date(s.created_at).toLocaleDateString()}
                   </div>
+                </Link>
+                <div className="flex items-center gap-1 shrink-0">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={(e) => e.stopPropagation()}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete session?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete "{s.title}" and all its problems. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteSession.mutate(s.id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <Link to={`/app/sessions/${s.id}`}>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  </Link>
                 </div>
-              </Card>
+              </div>
+            </Card>
           </motion.div>
         ))}
       </div>
