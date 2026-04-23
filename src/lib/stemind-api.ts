@@ -134,11 +134,17 @@ export const problemsApi = {
       method: "POST",
       body: JSON.stringify({ mode: "socratic", ...input }),
     }),
-  // Some backends nest solutions under a problem; we expose a fetch attempt
-  // that gracefully returns [] if the endpoint is missing.
+  // The backend returns { problem, solution } from GET /api/problems/:id.
+  // We normalise into Solution[] for the UI.
   getSolutions: async (problemId: number): Promise<Solution[]> => {
     try {
-      return await request<Solution[]>(`/api/problems/${problemId}/solutions`);
+      const res = await request<{ problem: Problem; solution: Solution | null }>(
+        `/api/problems/${problemId}`
+      );
+      if (!res) return [];
+      // If backend returns a single solution object, wrap in array
+      if (res.solution) return [res.solution];
+      return [];
     } catch {
       return [];
     }
