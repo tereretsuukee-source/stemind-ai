@@ -1,12 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Brain, Flame, Target, TrendingUp, BookOpen, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["dashboard", user?.id],
@@ -51,28 +53,28 @@ const Dashboard = () => {
   });
 
   const stats = [
-    { label: "Total Problems", value: data?.totalProblems ?? 0, icon: Brain, accent: "text-stemind-violet" },
-    { label: "Average Mastery", value: `${((data?.averageMastery ?? 0) * 100).toFixed(0)}%`, icon: Target, accent: "text-stemind-cyan" },
-    { label: "Topics Studied", value: data?.topicsStudied ?? 0, icon: BookOpen, accent: "text-stemind-violet" },
-    { label: "This Week", value: data?.weeklyProblems ?? 0, icon: TrendingUp, accent: "text-stemind-cyan" },
+    { label: t("dashboard.totalProblems"), value: data?.totalProblems ?? 0, icon: Brain, accent: "text-stemind-violet" },
+    { label: t("dashboard.averageMastery"), value: `${((data?.averageMastery ?? 0) * 100).toFixed(0)}%`, icon: Target, accent: "text-stemind-cyan" },
+    { label: t("dashboard.topicsStudied"), value: data?.topicsStudied ?? 0, icon: BookOpen, accent: "text-stemind-violet" },
+    { label: t("dashboard.thisWeek"), value: data?.weeklyProblems ?? 0, icon: TrendingUp, accent: "text-stemind-cyan" },
   ];
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto">
       <header className="mb-10">
-        <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-2">Dashboard</h1>
-        <p className="text-muted-foreground">Your learning, verified.</p>
+        <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-2">{t("dashboard.title")}</h1>
+        <p className="text-muted-foreground">{t("dashboard.subtitle")}</p>
       </header>
 
       {isLoading && (
         <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin" /> Loading stats…
+          <Loader2 className="w-4 h-4 animate-spin" /> {t("dashboard.loading")}
         </div>
       )}
 
       {error && (
         <Card className="p-4 border-destructive/40 bg-destructive/5 text-sm text-destructive mb-6">
-          Couldn't load dashboard: {(error as Error).message}
+          {t("dashboard.loadError")}: {(error as Error).message}
         </Card>
       )}
 
@@ -92,7 +94,7 @@ const Dashboard = () => {
         <Card className="p-6 border-border/60">
           <div className="flex items-center gap-2 mb-4">
             <Flame className="w-4 h-4 text-stemind-cyan" />
-            <h2 className="font-display font-semibold">Strong topics</h2>
+            <h2 className="font-display font-semibold">{t("dashboard.strongTopics")}</h2>
           </div>
           {data?.strongTopics?.length ? (
             <ul className="space-y-2">
@@ -104,14 +106,14 @@ const Dashboard = () => {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">Keep practicing to build mastery.</p>
+            <p className="text-sm text-muted-foreground">{t("dashboard.keepPracticing")}</p>
           )}
         </Card>
 
         <Card className="p-6 border-border/60">
           <div className="flex items-center gap-2 mb-4">
             <Target className="w-4 h-4 text-stemind-violet" />
-            <h2 className="font-display font-semibold">Needs review</h2>
+            <h2 className="font-display font-semibold">{t("dashboard.needsReview")}</h2>
           </div>
           {data?.weakTopics?.length ? (
             <ul className="space-y-2">
@@ -123,7 +125,7 @@ const Dashboard = () => {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">All caught up!</p>
+            <p className="text-sm text-muted-foreground">{t("dashboard.allCaughtUp")}</p>
           )}
         </Card>
       </div>

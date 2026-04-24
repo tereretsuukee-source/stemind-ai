@@ -12,6 +12,7 @@ import Dashboard from "./pages/app/Dashboard.tsx";
 import Sessions from "./pages/app/Sessions.tsx";
 import SessionDetail from "./pages/app/SessionDetail.tsx";
 import Knowledge from "./pages/app/Knowledge.tsx";
+import Settings from "./pages/app/Settings.tsx";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="sessions" element={<Sessions />} />
             <Route path="sessions/:id" element={<SessionDetail />} />
             <Route path="knowledge" element={<Knowledge />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
