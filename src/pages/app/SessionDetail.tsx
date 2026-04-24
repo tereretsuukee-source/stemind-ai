@@ -50,6 +50,7 @@ const SessionDetail = () => {
   const { id } = useParams();
   const sessionId = id!;
   const { user, session } = useAuth();
+  const { t, i18n } = useTranslation();
   const qc = useQueryClient();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -181,7 +182,7 @@ const SessionDetail = () => {
   const streamChat = useCallback(
     async (userText: string) => {
       if (!session?.access_token) {
-        throw new Error("You need to be signed in before starting a chat.");
+        throw new Error(t("session.needSignIn"));
       }
 
       const userMsg: Msg = { role: "user", content: userText };
@@ -203,6 +204,7 @@ const SessionDetail = () => {
             messages: updatedMessages,
             sessionId,
             subject: sessionRecord?.subject,
+            language: i18n.language?.split("-")[0] ?? "en",
           }),
         });
 
@@ -263,7 +265,7 @@ const SessionDetail = () => {
       } catch (e) {
         console.error("Stream error:", e);
         toast({
-          title: "Couldn't get response",
+          title: t("session.errorTitle"),
           description: e instanceof Error ? e.message : "Unknown error",
           variant: "destructive",
         });
@@ -271,7 +273,7 @@ const SessionDetail = () => {
         setIsStreaming(false);
       }
     },
-    [messages, sessionId, session, saveProblemAndSolution]
+    [messages, sessionId, session, sessionRecord, saveProblemAndSolution, t, i18n.language]
   );
 
   const handleSubmit = (e: FormEvent) => {
@@ -285,16 +287,16 @@ const SessionDetail = () => {
       {/* Header */}
       <header className="px-4 py-3 border-b border-border flex items-center gap-3 shrink-0 bg-card/50 backdrop-blur-sm">
         <Button variant="ghost" size="icon" asChild className="shrink-0">
-          <Link to="/app/sessions">
+          <Link to="/app/sessions" aria-label={t("session.back")}>
             <ArrowLeft className="w-4 h-4" />
           </Link>
         </Button>
         <div className="min-w-0">
           <h1 className="font-display font-semibold text-sm truncate">
-            {sessionRecord?.title ?? `Session`}
+            {sessionRecord?.title ?? t("session.fallbackTitle")}
           </h1>
           <p className="text-[11px] text-muted-foreground">
-            {sessionRecord?.subject || "General"} · AI-powered Socratic tutor
+            {sessionRecord?.subject || t("sessions.general")} · {t("session.subtitle")}
           </p>
         </div>
       </header>
@@ -305,9 +307,9 @@ const SessionDetail = () => {
           {messages.length === 0 && (
             <div className="text-center py-16">
               <Sparkles className="w-8 h-8 mx-auto mb-3 text-primary" />
-              <h3 className="font-display font-semibold mb-1">Ask a STEM question</h3>
+              <h3 className="font-display font-semibold mb-1">{t("session.emptyTitle")}</h3>
               <p className="text-sm text-muted-foreground">
-                I'll guide you step-by-step using the Socratic method.
+                {t("session.emptyDesc")}
               </p>
             </div>
           )}
@@ -345,7 +347,7 @@ const SessionDetail = () => {
               </div>
               <div className="rounded-2xl rounded-bl-sm bg-card border border-border/60 px-4 py-3 text-sm text-muted-foreground">
                 <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
-                Thinking…
+                {t("session.thinking")}
               </div>
             </div>
           )}
@@ -361,7 +363,7 @@ const SessionDetail = () => {
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask a STEM question…"
+            placeholder={t("session.placeholder")}
             className="min-h-[56px] resize-none text-sm"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
