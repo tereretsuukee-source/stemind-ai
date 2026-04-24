@@ -66,10 +66,25 @@ const Auth = () => {
         redirect_uri: `${window.location.origin}/app/dashboard`,
       });
       if (result.error) throw result.error;
-      // If redirected, browser will navigate away; otherwise session is set.
     } catch (err) {
       const message = err instanceof Error ? err.message : "Google sign-in failed";
       toast({ title: "Authentication failed", description: message, variant: "destructive" });
+      setLoading(false);
+    }
+  };
+
+  const handleGuest = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInAnonymously();
+      if (error) throw error;
+      toast({
+        title: "Guest mode",
+        description: "You're in. Sessions persist on this device only.",
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Guest sign-in failed";
+      toast({ title: "Guest mode unavailable", description: message, variant: "destructive" });
       setLoading(false);
     }
   };
