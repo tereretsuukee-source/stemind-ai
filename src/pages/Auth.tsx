@@ -44,8 +44,8 @@ const Auth = () => {
         });
         if (error) throw error;
         toast({
-          title: "Check your email",
-          description: "We sent a confirmation link to finish signing up.",
+          title: "Welcome to STEMind",
+          description: "Your account is ready. Let's start solving.",
         });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
