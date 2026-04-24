@@ -2,23 +2,25 @@ import { useEffect, useState, FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Brain, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { toast } from "@/hooks/use-toast";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Redirect if already signed in
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) navigate("/app/dashboard", { replace: true });
@@ -44,8 +46,8 @@ const Auth = () => {
         });
         if (error) throw error;
         toast({
-          title: "Welcome to STEMind",
-          description: "Your account is ready. Let's start solving.",
+          title: t("auth.welcome"),
+          description: t("auth.welcomeDesc"),
         });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -53,7 +55,7 @@ const Auth = () => {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong";
-      toast({ title: "Authentication failed", description: message, variant: "destructive" });
+      toast({ title: t("auth.authFailed"), description: message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -68,7 +70,7 @@ const Auth = () => {
       if (result.error) throw result.error;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Google sign-in failed";
-      toast({ title: "Authentication failed", description: message, variant: "destructive" });
+      toast({ title: t("auth.authFailed"), description: message, variant: "destructive" });
       setLoading(false);
     }
   };
@@ -79,12 +81,12 @@ const Auth = () => {
       const { error } = await supabase.auth.signInAnonymously();
       if (error) throw error;
       toast({
-        title: "Guest mode",
-        description: "You're in. Sessions persist on this device only.",
+        title: t("auth.guestTitle"),
+        description: t("auth.guestDesc"),
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Guest sign-in failed";
-      toast({ title: "Guest mode unavailable", description: message, variant: "destructive" });
+      toast({ title: t("auth.guestUnavailable"), description: message, variant: "destructive" });
       setLoading(false);
     }
   };
@@ -92,6 +94,9 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6 py-12">
       <div className="absolute inset-0 noise pointer-events-none" />
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageSwitcher variant="icon" />
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -108,12 +113,10 @@ const Auth = () => {
 
         <Card className="p-8 border-border/60 backdrop-blur-sm">
           <h1 className="text-2xl font-display font-bold mb-1">
-            {mode === "signin" ? "Welcome back" : "Create your account"}
+            {mode === "signin" ? t("auth.welcomeBack") : t("auth.createAccount")}
           </h1>
           <p className="text-sm text-muted-foreground mb-6">
-            {mode === "signin"
-              ? "Sign in to continue solving STEM problems."
-              : "Start learning with triple-verified AI."}
+            {mode === "signin" ? t("auth.signinDesc") : t("auth.signupDesc")}
           </p>
 
           <Button
@@ -129,7 +132,7 @@ const Auth = () => {
               <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.83z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/>
             </svg>
-            Continue with Google
+            {t("auth.continueGoogle")}
           </Button>
 
           <div className="relative mb-4">
@@ -137,25 +140,25 @@ const Auth = () => {
               <span className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or continue with email</span>
+              <span className="bg-card px-2 text-muted-foreground">{t("auth.orEmail")}</span>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "signup" && (
               <div className="space-y-2">
-                <Label htmlFor="name">Display name</Label>
+                <Label htmlFor="name">{t("auth.displayName")}</Label>
                 <Input
                   id="name"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Ada Lovelace"
+                  placeholder={t("auth.displayNamePlaceholder")}
                   autoComplete="name"
                 />
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t("auth.email")}</Label>
               <Input
                 id="email"
                 type="email"
@@ -163,11 +166,11 @@ const Auth = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                placeholder="you@school.edu"
+                placeholder={t("auth.emailPlaceholder")}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("auth.password")}</Label>
               <Input
                 id="password"
                 type="password"
@@ -187,9 +190,9 @@ const Auth = () => {
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : mode === "signin" ? (
-                "Sign in"
+                t("auth.signIn")
               ) : (
-                "Create account"
+                t("auth.createBtn")
               )}
             </Button>
           </form>
@@ -198,9 +201,7 @@ const Auth = () => {
             onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
             className="w-full text-center text-sm text-muted-foreground hover:text-foreground mt-6"
           >
-            {mode === "signin"
-              ? "Don't have an account? Sign up"
-              : "Already have an account? Sign in"}
+            {mode === "signin" ? t("auth.noAccount") : t("auth.hasAccount")}
           </button>
 
           <div className="relative my-4">
@@ -208,7 +209,7 @@ const Auth = () => {
               <span className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or</span>
+              <span className="bg-card px-2 text-muted-foreground">{t("auth.or")}</span>
             </div>
           </div>
 
@@ -219,10 +220,10 @@ const Auth = () => {
             disabled={loading}
             className="w-full"
           >
-            Continue as guest
+            {t("auth.continueGuest")}
           </Button>
           <p className="text-xs text-muted-foreground text-center mt-2">
-            No email needed. Data is tied to this browser only.
+            {t("auth.guestNote")}
           </p>
         </Card>
       </motion.div>

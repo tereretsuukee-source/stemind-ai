@@ -53,7 +53,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { messages, sessionId, problemId, subject, topic } = body;
+    const { messages, sessionId, problemId, subject, topic, language } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: "messages array required" }), {
@@ -61,6 +61,20 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Append a language directive to the system prompt so the tutor responds
+    // in the student's chosen language while keeping LaTeX/math intact.
+    const LANGUAGE_NAMES: Record<string, string> = {
+      en: "English",
+      es: "Spanish",
+      fr: "French",
+      de: "German",
+      zh: "Chinese (Simplified)",
+      ja: "Japanese",
+    };
+    const langCode = (typeof language === "string" ? language.split("-")[0] : "en").toLowerCase();
+    const langName = LANGUAGE_NAMES[langCode] ?? "English";
+    const localizedSystemPrompt = `${SYSTEM_PROMPT}\n\nIMPORTANT: Respond entirely in ${langName} (${langCode}). All explanations, hints, and prose must be in ${langName}. Keep mathematical notation in standard LaTeX (do NOT translate symbols, variables, or LaTeX commands).`;
 
     // Call Lovable AI with streaming
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -72,7 +86,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: localizedSystemPrompt },
           ...messages,
         ],
         stream: true,
