@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Network, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 
 const Knowledge = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const { data: nodes, isLoading, error } = useQuery({
     queryKey: ["knowledge", user?.id],
@@ -23,7 +25,6 @@ const Knowledge = () => {
     enabled: !!user,
   });
 
-  // Group by subject
   const grouped = (nodes ?? []).reduce<Record<string, typeof nodes>>((acc, n) => {
     const key = n.subject || "Other";
     if (!acc[key]) acc[key] = [] as typeof nodes;
@@ -34,13 +35,13 @@ const Knowledge = () => {
   return (
     <div className="p-6 md:p-10 max-w-6xl mx-auto">
       <header className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-2">Knowledge graph</h1>
-        <p className="text-muted-foreground">Your mastery, mapped topic by topic.</p>
+        <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-2">{t("knowledge.title")}</h1>
+        <p className="text-muted-foreground">{t("knowledge.subtitle")}</p>
       </header>
 
       {isLoading && (
         <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+          <Loader2 className="w-4 h-4 animate-spin" /> {t("knowledge.loading")}
         </div>
       )}
 
@@ -53,9 +54,9 @@ const Knowledge = () => {
       {!isLoading && nodes && nodes.length === 0 && (
         <Card className="p-10 text-center border-dashed">
           <Network className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
-          <h3 className="font-display font-semibold mb-1">No topics yet</h3>
+          <h3 className="font-display font-semibold mb-1">{t("knowledge.noTopics")}</h3>
           <p className="text-sm text-muted-foreground">
-            Solve problems to start building your personal knowledge graph.
+            {t("knowledge.noTopicsDesc")}
           </p>
         </Card>
       )}
@@ -76,7 +77,7 @@ const Knowledge = () => {
                       </div>
                       <Progress value={pct} className="h-1.5" />
                       <div className="text-xs text-muted-foreground mt-3">
-                        {n.problems_correct ?? 0} / {n.problems_attempted ?? 0} correct
+                        {t("knowledge.correct", { correct: n.problems_correct ?? 0, attempted: n.problems_attempted ?? 0 })}
                       </div>
                     </Card>
                   </motion.div>

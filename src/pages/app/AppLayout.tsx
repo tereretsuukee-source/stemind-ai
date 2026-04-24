@@ -1,21 +1,25 @@
 import { Outlet, NavLink, useNavigate, Navigate } from "react-router-dom";
-import { Brain, LayoutDashboard, MessagesSquare, Network, LogOut, Loader2, Moon, Sun } from "lucide-react";
+import { Brain, LayoutDashboard, MessagesSquare, Network, LogOut, Loader2, Moon, Sun, Settings as SettingsIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { cn } from "@/lib/utils";
-
-const navItems = [
-  { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/app/sessions", label: "Sessions", icon: MessagesSquare },
-  { to: "/app/knowledge", label: "Knowledge", icon: Network },
-];
 
 const AppLayout = () => {
   const { user, loading } = useAuth();
   const { theme, toggle: toggleTheme } = useTheme();
+  const { t } = useTranslation();
   const navigate = useNavigate();
+
+  const navItems = [
+    { to: "/app/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
+    { to: "/app/sessions", label: t("nav.sessions"), icon: MessagesSquare },
+    { to: "/app/knowledge", label: t("nav.knowledge"), icon: Network },
+    { to: "/app/settings", label: t("nav.settings"), icon: SettingsIcon },
+  ];
 
   if (loading) {
     return (
@@ -71,13 +75,16 @@ const AppLayout = () => {
           <div className="px-3 py-2 text-xs text-muted-foreground truncate">
             {user.email}
           </div>
-          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={toggleTheme}>
-            {theme === "dark" ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
-            {theme === "dark" ? "Light mode" : "Dark mode"}
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="flex-1 justify-start" onClick={toggleTheme}>
+              {theme === "dark" ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
+              {theme === "dark" ? t("nav.lightMode") : t("nav.darkMode")}
+            </Button>
+            <LanguageSwitcher variant="icon" />
+          </div>
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleSignOut}>
             <LogOut className="w-4 h-4 mr-2" />
-            Sign out
+            {t("nav.signOut")}
           </Button>
         </div>
       </aside>
@@ -94,6 +101,7 @@ const AppLayout = () => {
             </span>
           </NavLink>
           <div className="flex items-center gap-1">
+            <LanguageSwitcher variant="icon" />
             <Button variant="ghost" size="icon" onClick={toggleTheme}>
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </Button>
@@ -102,14 +110,14 @@ const AppLayout = () => {
             </Button>
           </div>
         </div>
-        <div className="flex border-t border-border">
+        <div className="flex border-t border-border overflow-x-auto">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  "flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium",
+                  "flex-1 min-w-fit flex items-center justify-center gap-1.5 py-2 px-2 text-xs font-medium whitespace-nowrap",
                   isActive ? "text-foreground border-b-2 border-primary" : "text-muted-foreground"
                 )
               }
