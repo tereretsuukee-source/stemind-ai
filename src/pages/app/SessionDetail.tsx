@@ -48,7 +48,7 @@ const RenderMath = ({ text }: { text: string }) => {
 const SessionDetail = () => {
   const { id } = useParams();
   const sessionId = id!;
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const qc = useQueryClient();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -56,7 +56,7 @@ const SessionDetail = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Load session info
-  const { data: session } = useQuery({
+  const { data: sessionRecord } = useQuery({
     queryKey: ["session", sessionId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -115,7 +115,7 @@ const SessionDetail = () => {
           user_id: user.id,
           input_type: "text",
           input_text: userText,
-          subject: session?.subject,
+          subject: sessionRecord?.subject,
           status: "solved",
         })
         .select("id")
@@ -137,8 +137,8 @@ const SessionDetail = () => {
       });
 
       // Update knowledge node
-      if (session?.subject) {
-        const topic = session.subject;
+      if (sessionRecord?.subject) {
+        const topic = sessionRecord.subject;
         const { data: existing } = await supabase
           .from("knowledge_nodes")
           .select("*")
@@ -174,11 +174,15 @@ const SessionDetail = () => {
       qc.invalidateQueries({ queryKey: ["dashboard", user.id] });
       qc.invalidateQueries({ queryKey: ["knowledge", user.id] });
     },
-    [user, sessionId, session, qc]
+    [user, sessionId, sessionRecord, qc]
   );
 
   const streamChat = useCallback(
     async (userText: string) => {
+      if (!session?.access_token) {
+        throw new Error("You need to be signed in before starting a chat.");
+      }
+
       const userMsg: Msg = { role: "user", content: userText };
       const updatedMessages = [...messages, userMsg];
       setMessages(updatedMessages);
@@ -192,12 +196,12 @@ const SessionDetail = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             messages: updatedMessages,
             sessionId,
-            subject: session?.subject,
+            subject: sessionRecord?.subject,
           }),
         });
 
