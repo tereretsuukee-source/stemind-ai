@@ -7,6 +7,7 @@ import {
 import "katex/dist/katex.min.css";
 import { BlockMath, InlineMath } from "react-katex";
 import ReactMarkdown from "react-markdown";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
