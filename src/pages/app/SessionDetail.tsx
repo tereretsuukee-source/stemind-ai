@@ -290,10 +290,10 @@ const SessionDetail = () => {
         </Button>
         <div className="min-w-0">
           <h1 className="font-display font-semibold text-sm truncate">
-            {session?.title ?? `Session`}
+            {sessionRecord?.title ?? `Session`}
           </h1>
           <p className="text-[11px] text-muted-foreground">
-            {session?.subject || "General"} · AI-powered Socratic tutor
+            {sessionRecord?.subject || "General"} · AI-powered Socratic tutor
           </p>
         </div>
       </header>
