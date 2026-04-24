@@ -202,6 +202,28 @@ const Auth = () => {
               ? "Don't have an account? Sign up"
               : "Already have an account? Sign in"}
           </button>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">Or</span>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleGuest}
+            disabled={loading}
+            className="w-full"
+          >
+            Continue as guest
+          </Button>
+          <p className="text-xs text-muted-foreground text-center mt-2">
+            No email needed. Data is tied to this browser only.
+          </p>
         </Card>
       </motion.div>
     </div>
