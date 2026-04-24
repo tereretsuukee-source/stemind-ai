@@ -66,10 +66,25 @@ const Auth = () => {
         redirect_uri: `${window.location.origin}/app/dashboard`,
       });
       if (result.error) throw result.error;
-      // If redirected, browser will navigate away; otherwise session is set.
     } catch (err) {
       const message = err instanceof Error ? err.message : "Google sign-in failed";
       toast({ title: "Authentication failed", description: message, variant: "destructive" });
+      setLoading(false);
+    }
+  };
+
+  const handleGuest = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInAnonymously();
+      if (error) throw error;
+      toast({
+        title: "Guest mode",
+        description: "You're in. Sessions persist on this device only.",
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Guest sign-in failed";
+      toast({ title: "Guest mode unavailable", description: message, variant: "destructive" });
       setLoading(false);
     }
   };
@@ -187,6 +202,28 @@ const Auth = () => {
               ? "Don't have an account? Sign up"
               : "Already have an account? Sign in"}
           </button>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">Or</span>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleGuest}
+            disabled={loading}
+            className="w-full"
+          >
+            Continue as guest
+          </Button>
+          <p className="text-xs text-muted-foreground text-center mt-2">
+            No email needed. Data is tied to this browser only.
+          </p>
         </Card>
       </motion.div>
     </div>
