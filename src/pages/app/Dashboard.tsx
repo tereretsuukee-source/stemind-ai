@@ -13,6 +13,7 @@ import { useStreak } from "@/hooks/useStreak";
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const { data: streak = 0 } = useStreak(user?.id);
 
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
