@@ -387,6 +387,31 @@ const SessionDetail = () => {
               </div>
             </div>
           )}
+          {chatError && (
+            <Card className="p-4 border-destructive/40 bg-destructive/5 flex items-start gap-3">
+              <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0 text-sm">
+                <div className="font-semibold text-destructive">{t("session.errorTitle")}</div>
+                <p className="text-muted-foreground mt-0.5">{chatError.message}</p>
+              </div>
+              {chatError.kind === "auth" ? (
+                <Button size="sm" variant="outline" onClick={() => navigate("/auth")}>
+                  <LogIn className="w-3.5 h-3.5 mr-1.5" />
+                  {t("session.signInAgain")}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => streamChat(chatError.lastInput)}
+                  disabled={isStreaming}
+                >
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                  {t("session.retry")}
+                </Button>
+              )}
+            </Card>
+          )}
         </div>
       </ScrollArea>
 
