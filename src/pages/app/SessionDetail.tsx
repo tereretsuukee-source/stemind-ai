@@ -183,8 +183,11 @@ const SessionDetail = () => {
 
   const streamChat = useCallback(
     async (userText: string) => {
+      setChatError(null);
+
       if (!session?.access_token) {
-        throw new Error(t("session.needSignIn"));
+        setChatError({ kind: "auth", message: t("session.sessionExpired"), lastInput: userText });
+        return;
       }
 
       const userMsg: Msg = { role: "user", content: userText };
@@ -194,81 +197,112 @@ const SessionDetail = () => {
       setIsStreaming(true);
 
       let assistantSoFar = "";
+      let resp: Response;
 
       try {
-        const resp = await fetch(CHAT_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            messages: updatedMessages,
-            sessionId,
-            subject: sessionRecord?.subject,
-            language: i18n.language?.split("-")[0] ?? "en",
-          }),
-        });
-
-        if (!resp.ok) {
-          const errData = await resp.json().catch(() => ({ error: "Unknown error" }));
-          throw new Error(errData.error || `HTTP ${resp.status}`);
+        try {
+          resp = await fetch(CHAT_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              messages: updatedMessages,
+              sessionId,
+              subject: sessionRecord?.subject,
+              language: i18n.language?.split("-")[0] ?? "en",
+            }),
+          });
+        } catch (networkErr) {
+          throw Object.assign(new Error(t("session.backendUnavailable")), { kind: "network" });
         }
 
-        if (!resp.body) throw new Error("No response body");
+        if (resp.status === 401 || resp.status === 403) {
+          throw Object.assign(new Error(t("session.sessionExpired")), { kind: "auth" });
+        }
+
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
+          throw Object.assign(new Error(errData.error || `HTTP ${resp.status}`), {
+            kind: resp.status >= 500 ? "network" : "generic",
+          });
+        }
+
+        if (!resp.body) {
+          throw Object.assign(new Error(t("session.backendUnavailable")), { kind: "network" });
+        }
 
         const reader = resp.body.getReader();
         const decoder = new TextDecoder();
         let textBuffer = "";
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          textBuffer += decoder.decode(value, { stream: true });
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            textBuffer += decoder.decode(value, { stream: true });
 
-          let newlineIndex: number;
-          while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-            let line = textBuffer.slice(0, newlineIndex);
-            textBuffer = textBuffer.slice(newlineIndex + 1);
+            let newlineIndex: number;
+            while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+              let line = textBuffer.slice(0, newlineIndex);
+              textBuffer = textBuffer.slice(newlineIndex + 1);
 
-            if (line.endsWith("\r")) line = line.slice(0, -1);
-            if (line.startsWith(":") || line.trim() === "") continue;
-            if (!line.startsWith("data: ")) continue;
+              if (line.endsWith("\r")) line = line.slice(0, -1);
+              if (line.startsWith(":") || line.trim() === "") continue;
+              if (!line.startsWith("data: ")) continue;
 
-            const jsonStr = line.slice(6).trim();
-            if (jsonStr === "[DONE]") break;
+              const jsonStr = line.slice(6).trim();
+              if (jsonStr === "[DONE]") break;
 
-            try {
-              const parsed = JSON.parse(jsonStr);
-              const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-              if (content) {
-                assistantSoFar += content;
-                setMessages((prev) => {
-                  const last = prev[prev.length - 1];
-                  if (last?.role === "assistant") {
-                    return prev.map((m, i) =>
-                      i === prev.length - 1 ? { ...m, content: assistantSoFar } : m
-                    );
-                  }
-                  return [...prev, { role: "assistant", content: assistantSoFar }];
-                });
+              try {
+                const parsed = JSON.parse(jsonStr);
+                const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+                if (content) {
+                  assistantSoFar += content;
+                  setMessages((prev) => {
+                    const last = prev[prev.length - 1];
+                    if (last?.role === "assistant") {
+                      return prev.map((m, i) =>
+                        i === prev.length - 1 ? { ...m, content: assistantSoFar } : m
+                      );
+                    }
+                    return [...prev, { role: "assistant", content: assistantSoFar }];
+                  });
+                }
+              } catch {
+                textBuffer = line + "\n" + textBuffer;
+                break;
               }
-            } catch {
-              textBuffer = line + "\n" + textBuffer;
-              break;
             }
           }
+        } catch {
+          // Stream interrupted mid-response
+          throw Object.assign(new Error(t("session.streamInterrupted")), { kind: "stream" });
         }
 
         // Save to DB after streaming completes
         if (assistantSoFar) {
           await saveProblemAndSolution(userText, assistantSoFar);
+        } else {
+          throw Object.assign(new Error(t("session.streamInterrupted")), { kind: "stream" });
         }
       } catch (e) {
         console.error("Stream error:", e);
+        const kind = (e as { kind?: "auth" | "network" | "stream" | "generic" }).kind ?? "generic";
+        const message = e instanceof Error ? e.message : "Unknown error";
+        setChatError({ kind, message, lastInput: userText });
+        // Remove the user message so retry doesn't double-send
+        setMessages((prev) => {
+          const next = [...prev];
+          // Drop trailing assistant if empty, then drop the user message we just added
+          if (next[next.length - 1]?.role === "assistant" && !next[next.length - 1].content) next.pop();
+          if (next[next.length - 1]?.role === "user" && next[next.length - 1].content === userText) next.pop();
+          return next;
+        });
         toast({
           title: t("session.errorTitle"),
-          description: e instanceof Error ? e.message : "Unknown error",
+          description: message,
           variant: "destructive",
         });
       } finally {
