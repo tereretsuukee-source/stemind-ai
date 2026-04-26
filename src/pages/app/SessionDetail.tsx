@@ -118,8 +118,8 @@ const SessionDetail = () => {
   }, [messages]);
 
   const saveProblemAndSolution = useCallback(
-    async (userText: string, aiResponse: string) => {
-      if (!user) return;
+    async (userText: string, aiResponse: string): Promise<AnswerMeta> => {
+      if (!user) return { topic: null, masteryDelta: 0 };
       // Save problem
       const { data: problem, error: pErr } = await supabase
         .from("problems")
@@ -136,7 +136,7 @@ const SessionDetail = () => {
 
       if (pErr || !problem) {
         console.error("Failed to save problem:", pErr);
-        return;
+        return { topic: sessionRecord?.subject ?? null, masteryDelta: 0 };
       }
 
       // Save solution
@@ -150,8 +150,9 @@ const SessionDetail = () => {
       });
 
       // Update knowledge node
-      if (sessionRecord?.subject) {
-        const topic = sessionRecord.subject;
+      let masteryDelta = 0;
+      const topic = sessionRecord?.subject ?? null;
+      if (topic) {
         const { data: existing } = await supabase
           .from("knowledge_nodes")
           .select("*")
@@ -161,16 +162,20 @@ const SessionDetail = () => {
           .maybeSingle();
 
         if (existing) {
+          const before = existing.mastery_level ?? 0;
+          const after = Math.min(1, before + 0.05);
+          masteryDelta = after - before;
           await supabase
             .from("knowledge_nodes")
             .update({
               problems_attempted: (existing.problems_attempted ?? 0) + 1,
               problems_correct: (existing.problems_correct ?? 0) + 1,
-              mastery_level: Math.min(1, (existing.mastery_level ?? 0) + 0.05),
+              mastery_level: after,
               last_practiced_at: new Date().toISOString(),
             })
             .eq("id", existing.id);
         } else {
+          masteryDelta = 0.1;
           await supabase.from("knowledge_nodes").insert({
             user_id: user.id,
             subject: topic,
@@ -186,6 +191,8 @@ const SessionDetail = () => {
       qc.invalidateQueries({ queryKey: ["problems", sessionId] });
       qc.invalidateQueries({ queryKey: ["dashboard", user.id] });
       qc.invalidateQueries({ queryKey: ["knowledge", user.id] });
+      qc.invalidateQueries({ queryKey: ["streak", user.id] });
+      return { topic, masteryDelta };
     },
     [user, sessionId, sessionRecord, qc]
   );
