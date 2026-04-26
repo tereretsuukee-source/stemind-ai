@@ -85,7 +85,7 @@ const HeroSection = () => {
               asChild
               className="text-base px-8 py-6 border-border text-foreground hover:bg-muted"
             >
-              <a href="#how-it-works">See How It Works</a>
+              <Link to="/demo">Try the Demo — No Signup</Link>
             </Button>
           </motion.div>
 

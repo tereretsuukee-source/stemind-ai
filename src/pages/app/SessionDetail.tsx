@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Send, Loader2, Sparkles, Bot, AlertTriangle, RefreshCw, LogIn,
@@ -15,10 +15,15 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AnswerSummary } from "@/components/AnswerSummary";
+import { useStreak } from "@/hooks/useStreak";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stem-solver`;
 
 type Msg = { role: "user" | "assistant"; content: string };
+type AnswerMeta = { topic?: string | null; masteryDelta: number };
+
 
 // ── Render LaTeX inside text ──
 const RenderMath = ({ text }: { text: string }) => {
@@ -53,11 +58,15 @@ const SessionDetail = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [chatError, setChatError] = useState<{ kind: "auth" | "network" | "stream" | "generic"; message: string; lastInput: string } | null>(null);
+  const [lastAnswerMeta, setLastAnswerMeta] = useState<AnswerMeta | null>(null);
+  const { data: streak = 0 } = useStreak(user?.id);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const prefillHandledRef = useRef(false);
 
   // Load session info
   const { data: sessionRecord } = useQuery({
@@ -109,8 +118,8 @@ const SessionDetail = () => {
   }, [messages]);
 
   const saveProblemAndSolution = useCallback(
-    async (userText: string, aiResponse: string) => {
-      if (!user) return;
+    async (userText: string, aiResponse: string): Promise<AnswerMeta> => {
+      if (!user) return { topic: null, masteryDelta: 0 };
       // Save problem
       const { data: problem, error: pErr } = await supabase
         .from("problems")
@@ -127,7 +136,7 @@ const SessionDetail = () => {
 
       if (pErr || !problem) {
         console.error("Failed to save problem:", pErr);
-        return;
+        return { topic: sessionRecord?.subject ?? null, masteryDelta: 0 };
       }
 
       // Save solution
@@ -141,8 +150,9 @@ const SessionDetail = () => {
       });
 
       // Update knowledge node
-      if (sessionRecord?.subject) {
-        const topic = sessionRecord.subject;
+      let masteryDelta = 0;
+      const topic = sessionRecord?.subject ?? null;
+      if (topic) {
         const { data: existing } = await supabase
           .from("knowledge_nodes")
           .select("*")
@@ -152,16 +162,20 @@ const SessionDetail = () => {
           .maybeSingle();
 
         if (existing) {
+          const before = existing.mastery_level ?? 0;
+          const after = Math.min(1, before + 0.05);
+          masteryDelta = after - before;
           await supabase
             .from("knowledge_nodes")
             .update({
               problems_attempted: (existing.problems_attempted ?? 0) + 1,
               problems_correct: (existing.problems_correct ?? 0) + 1,
-              mastery_level: Math.min(1, (existing.mastery_level ?? 0) + 0.05),
+              mastery_level: after,
               last_practiced_at: new Date().toISOString(),
             })
             .eq("id", existing.id);
         } else {
+          masteryDelta = 0.1;
           await supabase.from("knowledge_nodes").insert({
             user_id: user.id,
             subject: topic,
@@ -177,6 +191,8 @@ const SessionDetail = () => {
       qc.invalidateQueries({ queryKey: ["problems", sessionId] });
       qc.invalidateQueries({ queryKey: ["dashboard", user.id] });
       qc.invalidateQueries({ queryKey: ["knowledge", user.id] });
+      qc.invalidateQueries({ queryKey: ["streak", user.id] });
+      return { topic, masteryDelta };
     },
     [user, sessionId, sessionRecord, qc]
   );
@@ -283,7 +299,8 @@ const SessionDetail = () => {
 
         // Save to DB after streaming completes
         if (assistantSoFar) {
-          await saveProblemAndSolution(userText, assistantSoFar);
+          const meta = await saveProblemAndSolution(userText, assistantSoFar);
+          setLastAnswerMeta(meta);
         } else {
           throw Object.assign(new Error(t("session.streamInterrupted")), { kind: "stream" });
         }
@@ -317,6 +334,26 @@ const SessionDetail = () => {
     if (!input.trim() || isStreaming) return;
     streamChat(input.trim());
   };
+
+  // Auto-prefill: when arriving with ?prefill=..., put the question in the input
+  // (and auto-send if there are no existing messages yet).
+  useEffect(() => {
+    const prefill = searchParams.get("prefill");
+    if (!prefill || prefillHandledRef.current) return;
+    // Wait until existingProblems has loaded before deciding to auto-send,
+    // so we don't double-post into a session that already has history.
+    if (existingProblems === undefined) return;
+
+    prefillHandledRef.current = true;
+    setInput(prefill);
+    if ((existingProblems?.length ?? 0) === 0 && session?.access_token && !isStreaming) {
+      streamChat(prefill);
+    }
+    // Clear the query param so refresh doesn't re-trigger
+    const next = new URLSearchParams(searchParams);
+    next.delete("prefill");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, existingProblems, session, isStreaming, streamChat, setSearchParams]);
 
   return (
     <div className="flex flex-col h-screen">
@@ -381,12 +418,26 @@ const SessionDetail = () => {
               <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center mr-2 mt-1 shrink-0">
                 <Bot className="w-4 h-4 text-primary" />
               </div>
-              <div className="rounded-2xl rounded-bl-sm bg-card border border-border/60 px-4 py-3 text-sm text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
-                {t("session.thinking")}
+              <div className="rounded-2xl rounded-bl-sm bg-card border border-border/60 px-4 py-3 text-sm space-y-2 w-full max-w-[85%]">
+                <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  {t("session.thinking")}
+                </div>
+                <Skeleton className="h-3 w-4/5" />
+                <Skeleton className="h-3 w-3/5" />
+                <Skeleton className="h-3 w-2/5" />
               </div>
             </div>
           )}
+
+          {!isStreaming && lastAnswerMeta && messages[messages.length - 1]?.role === "assistant" && (
+            <AnswerSummary
+              topic={lastAnswerMeta.topic ?? sessionRecord?.subject ?? null}
+              masteryDelta={lastAnswerMeta.masteryDelta}
+              streak={streak}
+            />
+          )}
+
           {chatError && (
             <Card className="p-4 border-destructive/40 bg-destructive/5 flex items-start gap-3">
               <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />

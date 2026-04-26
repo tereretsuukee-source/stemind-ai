@@ -6,11 +6,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { OnboardingCard } from "@/components/OnboardingCard";
+import { useStreak } from "@/hooks/useStreak";
+
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const { data: streak = 0 } = useStreak(user?.id);
 
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
     retry: 1,
@@ -56,6 +60,7 @@ const Dashboard = () => {
   });
 
   const stats = [
+    { label: t("dashboard.streakLabel"), value: streak, icon: Flame, accent: "text-stemind-amber" },
     { label: t("dashboard.totalProblems"), value: data?.totalProblems ?? 0, icon: Brain, accent: "text-stemind-violet" },
     { label: t("dashboard.averageMastery"), value: `${((data?.averageMastery ?? 0) * 100).toFixed(0)}%`, icon: Target, accent: "text-stemind-cyan" },
     { label: t("dashboard.topicsStudied"), value: data?.topicsStudied ?? 0, icon: BookOpen, accent: "text-stemind-violet" },
@@ -68,12 +73,6 @@ const Dashboard = () => {
         <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-2">{t("dashboard.title")}</h1>
         <p className="text-muted-foreground">{t("dashboard.subtitle")}</p>
       </header>
-
-      {isLoading && (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin" /> {t("dashboard.loading")}
-        </div>
-      )}
 
       {error && (
         <Card className="p-5 border-destructive/40 bg-destructive/5 mb-6 flex items-start gap-3">
@@ -91,17 +90,29 @@ const Dashboard = () => {
 
       {!isLoading && !error && (data?.totalSessions ?? 0) === 0 && <OnboardingCard />}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-        {stats.map((s, i) => (
-          <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <Card className="p-5 border-border/60 hover:border-border transition-colors">
-              <s.icon className={`w-5 h-5 mb-3 ${s.accent}`} />
-              <div className="text-2xl md:text-3xl font-display font-bold">{s.value}</div>
-              <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
+      {isLoading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Card key={i} className="p-5 border-border/60">
+              <Skeleton className="w-5 h-5 mb-3" />
+              <Skeleton className="h-7 w-16 mb-2" />
+              <Skeleton className="h-3 w-20" />
             </Card>
-          </motion.div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
+          {stats.map((s, i) => (
+            <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+              <Card className="p-5 border-border/60 hover:border-border transition-colors">
+                <s.icon className={`w-5 h-5 mb-3 ${s.accent}`} />
+                <div className="text-2xl md:text-3xl font-display font-bold">{s.value}</div>
+                <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-4">
         <Card className="p-6 border-border/60">

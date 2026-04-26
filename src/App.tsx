@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Auth from "./pages/Auth.tsx";
+import Demo from "./pages/Demo.tsx";
 import AppLayout from "./pages/app/AppLayout.tsx";
 import Dashboard from "./pages/app/Dashboard.tsx";
 import Sessions from "./pages/app/Sessions.tsx";
@@ -44,6 +45,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<InitialRedirect />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/demo" element={<Demo />} />
           <Route path="/app" element={<AppLayout />}>
             <Route index element={<Navigate to="/app/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
