@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Send, Loader2, Sparkles, Bot, AlertTriangle, RefreshCw, LogIn,
@@ -15,10 +15,15 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AnswerSummary } from "@/components/AnswerSummary";
+import { useStreak } from "@/hooks/useStreak";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stem-solver`;
 
 type Msg = { role: "user" | "assistant"; content: string };
+type AnswerMeta = { topic?: string | null; masteryDelta: number };
+
 
 // ── Render LaTeX inside text ──
 const RenderMath = ({ text }: { text: string }) => {
@@ -53,11 +58,15 @@ const SessionDetail = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [chatError, setChatError] = useState<{ kind: "auth" | "network" | "stream" | "generic"; message: string; lastInput: string } | null>(null);
+  const [lastAnswerMeta, setLastAnswerMeta] = useState<AnswerMeta | null>(null);
+  const { data: streak = 0 } = useStreak(user?.id);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const prefillHandledRef = useRef(false);
 
   // Load session info
   const { data: sessionRecord } = useQuery({
