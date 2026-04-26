@@ -299,7 +299,8 @@ const SessionDetail = () => {
 
         // Save to DB after streaming completes
         if (assistantSoFar) {
-          await saveProblemAndSolution(userText, assistantSoFar);
+          const meta = await saveProblemAndSolution(userText, assistantSoFar);
+          setLastAnswerMeta(meta);
         } else {
           throw Object.assign(new Error(t("session.streamInterrupted")), { kind: "stream" });
         }
@@ -333,6 +334,26 @@ const SessionDetail = () => {
     if (!input.trim() || isStreaming) return;
     streamChat(input.trim());
   };
+
+  // Auto-prefill: when arriving with ?prefill=..., put the question in the input
+  // (and auto-send if there are no existing messages yet).
+  useEffect(() => {
+    const prefill = searchParams.get("prefill");
+    if (!prefill || prefillHandledRef.current) return;
+    // Wait until existingProblems has loaded before deciding to auto-send,
+    // so we don't double-post into a session that already has history.
+    if (existingProblems === undefined) return;
+
+    prefillHandledRef.current = true;
+    setInput(prefill);
+    if ((existingProblems?.length ?? 0) === 0 && session?.access_token && !isStreaming) {
+      streamChat(prefill);
+    }
+    // Clear the query param so refresh doesn't re-trigger
+    const next = new URLSearchParams(searchParams);
+    next.delete("prefill");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, existingProblems, session, isStreaming, streamChat, setSearchParams]);
 
   return (
     <div className="flex flex-col h-screen">
@@ -397,12 +418,26 @@ const SessionDetail = () => {
               <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center mr-2 mt-1 shrink-0">
                 <Bot className="w-4 h-4 text-primary" />
               </div>
-              <div className="rounded-2xl rounded-bl-sm bg-card border border-border/60 px-4 py-3 text-sm text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
-                {t("session.thinking")}
+              <div className="rounded-2xl rounded-bl-sm bg-card border border-border/60 px-4 py-3 text-sm space-y-2 w-full max-w-[85%]">
+                <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  {t("session.thinking")}
+                </div>
+                <Skeleton className="h-3 w-4/5" />
+                <Skeleton className="h-3 w-3/5" />
+                <Skeleton className="h-3 w-2/5" />
               </div>
             </div>
           )}
+
+          {!isStreaming && lastAnswerMeta && messages[messages.length - 1]?.role === "assistant" && (
+            <AnswerSummary
+              topic={lastAnswerMeta.topic ?? sessionRecord?.subject ?? null}
+              masteryDelta={lastAnswerMeta.masteryDelta}
+              streak={streak}
+            />
+          )}
+
           {chatError && (
             <Card className="p-4 border-destructive/40 bg-destructive/5 flex items-start gap-3">
               <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
