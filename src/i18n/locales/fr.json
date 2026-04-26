@@ -20,7 +20,17 @@
     "strongTopics": "Sujets maîtrisés",
     "needsReview": "À revoir",
     "keepPracticing": "Continuez à pratiquer pour développer votre maîtrise.",
-    "allCaughtUp": "Tout est à jour !"
+    "allCaughtUp": "Tout est à jour !",
+    "welcomeTitle": "Welcome to STEMind 👋",
+    "welcomeDesc": "Triple-verified AI tutoring for STEM. Here's how to get started:",
+    "stepCreate": "Create your first session",
+    "stepCreateDesc": "A session is your workspace for a topic — like Calculus or Quantum Physics.",
+    "stepAsk": "Try a sample question",
+    "stepAskDesc": "Ask anything: derivatives, kinematics, balancing equations. The tutor guides you Socratically.",
+    "stepNext": "What happens next",
+    "stepNextDesc": "Every answer is checked by a Solver, Critic and Verifier — and your mastery map updates live.",
+    "ctaCreateSession": "Create first session",
+    "ctaTryDemo": "Try a sample question"
   },
   "sessions": {
     "title": "Sessions",
@@ -55,7 +65,13 @@
     "thinking": "Réflexion…",
     "placeholder": "Posez une question STEM…",
     "errorTitle": "Impossible d'obtenir une réponse",
-    "needSignIn": "Vous devez être connecté pour démarrer une discussion."
+    "needSignIn": "Vous devez être connecté pour démarrer une discussion.",
+    "streamInterrupted": "The connection dropped before the answer finished. Tap retry to continue.",
+    "backendUnavailable": "We can't reach the tutor right now. Please try again in a moment.",
+    "retry": "Retry",
+    "sessionExpired": "Your session expired. Please sign in again.",
+    "signInAgain": "Sign in again",
+    "errorBanner": "Something went wrong"
   },
   "knowledge": {
     "title": "Graphe de connaissances",

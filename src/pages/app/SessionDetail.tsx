@@ -1,8 +1,8 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Send, Loader2, Sparkles, Bot,
+  ArrowLeft, Send, Loader2, Sparkles, Bot, AlertTriangle, RefreshCw, LogIn,
 } from "lucide-react";
 import "katex/dist/katex.min.css";
 import { BlockMath, InlineMath } from "react-katex";
@@ -51,10 +51,12 @@ const SessionDetail = () => {
   const sessionId = id!;
   const { user, session } = useAuth();
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [chatError, setChatError] = useState<{ kind: "auth" | "network" | "stream" | "generic"; message: string; lastInput: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Load session info
@@ -181,8 +183,11 @@ const SessionDetail = () => {
 
   const streamChat = useCallback(
     async (userText: string) => {
+      setChatError(null);
+
       if (!session?.access_token) {
-        throw new Error(t("session.needSignIn"));
+        setChatError({ kind: "auth", message: t("session.sessionExpired"), lastInput: userText });
+        return;
       }
 
       const userMsg: Msg = { role: "user", content: userText };
@@ -192,81 +197,112 @@ const SessionDetail = () => {
       setIsStreaming(true);
 
       let assistantSoFar = "";
+      let resp: Response;
 
       try {
-        const resp = await fetch(CHAT_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            messages: updatedMessages,
-            sessionId,
-            subject: sessionRecord?.subject,
-            language: i18n.language?.split("-")[0] ?? "en",
-          }),
-        });
-
-        if (!resp.ok) {
-          const errData = await resp.json().catch(() => ({ error: "Unknown error" }));
-          throw new Error(errData.error || `HTTP ${resp.status}`);
+        try {
+          resp = await fetch(CHAT_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              messages: updatedMessages,
+              sessionId,
+              subject: sessionRecord?.subject,
+              language: i18n.language?.split("-")[0] ?? "en",
+            }),
+          });
+        } catch (networkErr) {
+          throw Object.assign(new Error(t("session.backendUnavailable")), { kind: "network" });
         }
 
-        if (!resp.body) throw new Error("No response body");
+        if (resp.status === 401 || resp.status === 403) {
+          throw Object.assign(new Error(t("session.sessionExpired")), { kind: "auth" });
+        }
+
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
+          throw Object.assign(new Error(errData.error || `HTTP ${resp.status}`), {
+            kind: resp.status >= 500 ? "network" : "generic",
+          });
+        }
+
+        if (!resp.body) {
+          throw Object.assign(new Error(t("session.backendUnavailable")), { kind: "network" });
+        }
 
         const reader = resp.body.getReader();
         const decoder = new TextDecoder();
         let textBuffer = "";
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          textBuffer += decoder.decode(value, { stream: true });
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            textBuffer += decoder.decode(value, { stream: true });
 
-          let newlineIndex: number;
-          while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-            let line = textBuffer.slice(0, newlineIndex);
-            textBuffer = textBuffer.slice(newlineIndex + 1);
+            let newlineIndex: number;
+            while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+              let line = textBuffer.slice(0, newlineIndex);
+              textBuffer = textBuffer.slice(newlineIndex + 1);
 
-            if (line.endsWith("\r")) line = line.slice(0, -1);
-            if (line.startsWith(":") || line.trim() === "") continue;
-            if (!line.startsWith("data: ")) continue;
+              if (line.endsWith("\r")) line = line.slice(0, -1);
+              if (line.startsWith(":") || line.trim() === "") continue;
+              if (!line.startsWith("data: ")) continue;
 
-            const jsonStr = line.slice(6).trim();
-            if (jsonStr === "[DONE]") break;
+              const jsonStr = line.slice(6).trim();
+              if (jsonStr === "[DONE]") break;
 
-            try {
-              const parsed = JSON.parse(jsonStr);
-              const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-              if (content) {
-                assistantSoFar += content;
-                setMessages((prev) => {
-                  const last = prev[prev.length - 1];
-                  if (last?.role === "assistant") {
-                    return prev.map((m, i) =>
-                      i === prev.length - 1 ? { ...m, content: assistantSoFar } : m
-                    );
-                  }
-                  return [...prev, { role: "assistant", content: assistantSoFar }];
-                });
+              try {
+                const parsed = JSON.parse(jsonStr);
+                const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+                if (content) {
+                  assistantSoFar += content;
+                  setMessages((prev) => {
+                    const last = prev[prev.length - 1];
+                    if (last?.role === "assistant") {
+                      return prev.map((m, i) =>
+                        i === prev.length - 1 ? { ...m, content: assistantSoFar } : m
+                      );
+                    }
+                    return [...prev, { role: "assistant", content: assistantSoFar }];
+                  });
+                }
+              } catch {
+                textBuffer = line + "\n" + textBuffer;
+                break;
               }
-            } catch {
-              textBuffer = line + "\n" + textBuffer;
-              break;
             }
           }
+        } catch {
+          // Stream interrupted mid-response
+          throw Object.assign(new Error(t("session.streamInterrupted")), { kind: "stream" });
         }
 
         // Save to DB after streaming completes
         if (assistantSoFar) {
           await saveProblemAndSolution(userText, assistantSoFar);
+        } else {
+          throw Object.assign(new Error(t("session.streamInterrupted")), { kind: "stream" });
         }
       } catch (e) {
         console.error("Stream error:", e);
+        const kind = (e as { kind?: "auth" | "network" | "stream" | "generic" }).kind ?? "generic";
+        const message = e instanceof Error ? e.message : "Unknown error";
+        setChatError({ kind, message, lastInput: userText });
+        // Remove the user message so retry doesn't double-send
+        setMessages((prev) => {
+          const next = [...prev];
+          // Drop trailing assistant if empty, then drop the user message we just added
+          if (next[next.length - 1]?.role === "assistant" && !next[next.length - 1].content) next.pop();
+          if (next[next.length - 1]?.role === "user" && next[next.length - 1].content === userText) next.pop();
+          return next;
+        });
         toast({
           title: t("session.errorTitle"),
-          description: e instanceof Error ? e.message : "Unknown error",
+          description: message,
           variant: "destructive",
         });
       } finally {
@@ -350,6 +386,31 @@ const SessionDetail = () => {
                 {t("session.thinking")}
               </div>
             </div>
+          )}
+          {chatError && (
+            <Card className="p-4 border-destructive/40 bg-destructive/5 flex items-start gap-3">
+              <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0 text-sm">
+                <div className="font-semibold text-destructive">{t("session.errorTitle")}</div>
+                <p className="text-muted-foreground mt-0.5">{chatError.message}</p>
+              </div>
+              {chatError.kind === "auth" ? (
+                <Button size="sm" variant="outline" onClick={() => navigate("/auth")}>
+                  <LogIn className="w-3.5 h-3.5 mr-1.5" />
+                  {t("session.signInAgain")}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => streamChat(chatError.lastInput)}
+                  disabled={isStreaming}
+                >
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                  {t("session.retry")}
+                </Button>
+              )}
+            </Card>
           )}
         </div>
       </ScrollArea>

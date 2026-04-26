@@ -15,15 +15,12 @@ const Footer = () => {
           </div>
 
           <div className="flex items-center gap-8">
-            {["Privacy", "Terms", "Contact", "Blog"].map((link) => (
-              <a
-                key={link}
-                href="#"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {link}
-              </a>
-            ))}
+            <a
+              href="mailto:hello@stemind.app"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Contact
+            </a>
           </div>
 
           <p className="text-sm text-muted-foreground">

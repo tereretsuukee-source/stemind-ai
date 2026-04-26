@@ -1,16 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Brain, Flame, Target, TrendingUp, BookOpen, Loader2 } from "lucide-react";
+import { Brain, Flame, Target, TrendingUp, BookOpen, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { OnboardingCard } from "@/components/OnboardingCard";
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch, isRefetching } = useQuery({
+    retry: 1,
     queryKey: ["dashboard", user?.id],
     queryFn: async () => {
       const userId = user!.id;
@@ -73,10 +76,20 @@ const Dashboard = () => {
       )}
 
       {error && (
-        <Card className="p-4 border-destructive/40 bg-destructive/5 text-sm text-destructive mb-6">
-          {t("dashboard.loadError")}: {(error as Error).message}
+        <Card className="p-5 border-destructive/40 bg-destructive/5 mb-6 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold text-destructive">{t("dashboard.loadError")}</div>
+            <p className="text-xs text-muted-foreground mt-1 break-words">{(error as Error).message}</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isRefetching}>
+            {isRefetching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+            {t("session.retry")}
+          </Button>
         </Card>
       )}
+
+      {!isLoading && !error && (data?.totalSessions ?? 0) === 0 && <OnboardingCard />}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         {stats.map((s, i) => (
