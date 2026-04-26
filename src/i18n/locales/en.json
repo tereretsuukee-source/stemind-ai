@@ -13,6 +13,7 @@
     "subtitle": "Your learning, verified.",
     "loading": "Loading stats…",
     "loadError": "Couldn't load dashboard",
+    "streakLabel": "Day Streak",
     "totalProblems": "Total Problems",
     "averageMastery": "Average Mastery",
     "topicsStudied": "Topics Studied",
@@ -21,6 +22,7 @@
     "needsReview": "Needs review",
     "keepPracticing": "Keep practicing to build mastery.",
     "allCaughtUp": "All caught up!",
+    "getStarted": "Get started",
     "welcomeTitle": "Welcome to STEMind 👋",
     "welcomeDesc": "Triple-verified AI tutoring for STEM. Here's how to get started:",
     "stepCreate": "Create your first session",
@@ -30,7 +32,11 @@
     "stepNext": "What happens next",
     "stepNextDesc": "Every answer is checked by a Solver, Critic and Verifier — and your mastery map updates live.",
     "ctaCreateSession": "Create first session",
-    "ctaTryDemo": "Try a sample question"
+    "ctaTryDemo": "Try a sample question",
+    "ctaTryExample": "Try the example session",
+    "ctaTryDemoSandbox": "Open public demo",
+    "exampleSessionTitle": "Example: Derivatives",
+    "examplePrefill": "Find the derivative of f(x) = x³·ln(x) and explain each step."
   },
   "sessions": {
     "title": "Sessions",
@@ -71,7 +77,25 @@
     "retry": "Retry",
     "sessionExpired": "Your session expired. Please sign in again.",
     "signInAgain": "Sign in again",
-    "errorBanner": "Something went wrong"
+    "errorBanner": "Something went wrong",
+    "answeredLabel": "Answer verified",
+    "mastery": "mastery",
+    "streakDays_one": "{{count}} day streak",
+    "streakDays_other": "{{count}} day streak"
+  },
+  "demo": {
+    "title": "STEMind Demo",
+    "badge": "Demo",
+    "subtitle": "Local sandbox · nothing is saved",
+    "tryItOutLabel": "Try it out",
+    "welcomeTitle": "See the tutor in action",
+    "welcomeDesc": "Run the example below or type your own STEM question. No signup needed — but progress isn't saved.",
+    "prefilledQuestion": "Find the derivative of f(x) = x³·ln(x) and explain each step.",
+    "runExample": "Run the example",
+    "signUpToSave": "Sign up to save",
+    "likeIt": "Like what you see?",
+    "upgradeNote": "Create a free account to save sessions, track mastery, and build your knowledge graph.",
+    "signUpFree": "Sign up free"
   },
   "knowledge": {
     "title": "Knowledge graph",
