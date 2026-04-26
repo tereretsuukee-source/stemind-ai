@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -115,8 +116,13 @@ const Sessions = () => {
       </header>
 
       {isLoading && (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin" /> {t("sessions.loading")}
+        <div className="grid md:grid-cols-2 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="p-5 border-border/60">
+              <Skeleton className="h-4 w-2/3 mb-2" />
+              <Skeleton className="h-3 w-1/3" />
+            </Card>
+          ))}
         </div>
       )}
 

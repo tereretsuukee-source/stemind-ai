@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Network, Loader2 } from "lucide-react";
+import { Network } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Knowledge = () => {
   const { user } = useAuth();
@@ -40,8 +41,17 @@ const Knowledge = () => {
       </header>
 
       {isLoading && (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin" /> {t("knowledge.loading")}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="p-5 border-border/60">
+              <div className="flex items-baseline justify-between mb-3">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-10" />
+              </div>
+              <Skeleton className="h-1.5 w-full rounded-full" />
+              <Skeleton className="h-3 w-24 mt-3" />
+            </Card>
+          ))}
         </div>
       )}
 
