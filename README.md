@@ -94,9 +94,8 @@ This project is licensed under the MIT License — see the [LICENSE](./LICENSE) 
 
 ## 💬 Support
 
-- **Email:** support@stemind.app
-- **Discord:** [Join our community](https://discord.gg/stemind)
-- **Twitter:** [@STEMindApp](https://twitter.com/STEMindApp)
+- **Email:** tereretsuukee@gmail.com
+- **Instagram:** [@tereretsuke](https://Instragram.com/tereretsuke)
 
 ---
 
