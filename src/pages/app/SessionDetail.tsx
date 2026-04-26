@@ -51,10 +51,12 @@ const SessionDetail = () => {
   const sessionId = id!;
   const { user, session } = useAuth();
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [chatError, setChatError] = useState<{ kind: "auth" | "network" | "stream" | "generic"; message: string; lastInput: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Load session info
