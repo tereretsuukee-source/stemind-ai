@@ -6,11 +6,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { OnboardingCard } from "@/components/OnboardingCard";
+import { useStreak } from "@/hooks/useStreak";
+
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { data: streak = 0 } = useStreak(user?.id);
 
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
     retry: 1,
