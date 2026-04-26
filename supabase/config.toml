@@ -1,1 +1,4 @@
 project_id = "bnazuxpzudvcjxkbuemp"
+
+[functions.stem-demo]
+verify_jwt = false
