@@ -20,7 +20,17 @@
     "strongTopics": "得意トピック",
     "needsReview": "復習が必要",
     "keepPracticing": "練習を続けて習熟度を高めましょう。",
-    "allCaughtUp": "すべて完了!"
+    "allCaughtUp": "すべて完了!",
+    "welcomeTitle": "Welcome to STEMind 👋",
+    "welcomeDesc": "Triple-verified AI tutoring for STEM. Here's how to get started:",
+    "stepCreate": "Create your first session",
+    "stepCreateDesc": "A session is your workspace for a topic — like Calculus or Quantum Physics.",
+    "stepAsk": "Try a sample question",
+    "stepAskDesc": "Ask anything: derivatives, kinematics, balancing equations. The tutor guides you Socratically.",
+    "stepNext": "What happens next",
+    "stepNextDesc": "Every answer is checked by a Solver, Critic and Verifier — and your mastery map updates live.",
+    "ctaCreateSession": "Create first session",
+    "ctaTryDemo": "Try a sample question"
   },
   "sessions": {
     "title": "セッション",
@@ -55,7 +65,13 @@
     "thinking": "考え中…",
     "placeholder": "STEMの質問を入力…",
     "errorTitle": "応答を取得できませんでした",
-    "needSignIn": "チャットを始めるにはサインインが必要です。"
+    "needSignIn": "チャットを始めるにはサインインが必要です。",
+    "streamInterrupted": "The connection dropped before the answer finished. Tap retry to continue.",
+    "backendUnavailable": "We can't reach the tutor right now. Please try again in a moment.",
+    "retry": "Retry",
+    "sessionExpired": "Your session expired. Please sign in again.",
+    "signInAgain": "Sign in again",
+    "errorBanner": "Something went wrong"
   },
   "knowledge": {
     "title": "ナレッジグラフ",
