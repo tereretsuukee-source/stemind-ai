@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Brain, Flame, Target, TrendingUp, BookOpen, Loader2 } from "lucide-react";
+import { Brain, Flame, Target, TrendingUp, BookOpen, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { OnboardingCard } from "@/components/OnboardingCard";
 
 const Dashboard = () => {
   const { user } = useAuth();
