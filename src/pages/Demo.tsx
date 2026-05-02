@@ -54,6 +54,7 @@ const Demo = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastInput, setLastInput] = useState<string>("");
+  const [mode, setMode] = useState<SolverMode>(() => loadMode());
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
