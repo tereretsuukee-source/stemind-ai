@@ -230,6 +230,7 @@ const SessionDetail = () => {
               sessionId,
               subject: sessionRecord?.subject,
               language: i18n.language?.split("-")[0] ?? "en",
+              mode,
             }),
           });
         } catch (networkErr) {
