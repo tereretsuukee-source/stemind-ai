@@ -80,6 +80,7 @@ const Demo = () => {
         body: JSON.stringify({
           messages: updated,
           language: i18n.language?.split("-")[0] ?? "en",
+          mode,
         }),
       });
 
