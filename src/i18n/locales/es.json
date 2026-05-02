@@ -116,5 +116,12 @@
     "guestDesc": "Estás dentro. Las sesiones solo persisten en este dispositivo.",
     "authFailed": "Error de autenticación",
     "guestUnavailable": "Modo invitado no disponible"
+  },
+  "mode": {
+    "label": "Modo",
+    "tutor": "Tutor",
+    "answer": "Respuesta",
+    "tutorHint": "Preguntas guiadas y pistas (socrático)",
+    "answerHint": "Respuesta final primero, luego la explicación"
   }
 }

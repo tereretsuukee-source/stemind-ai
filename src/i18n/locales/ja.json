@@ -116,5 +116,12 @@
     "guestDesc": "ログイン中。セッションはこの端末のみ。",
     "authFailed": "認証に失敗しました",
     "guestUnavailable": "ゲストモードを利用できません"
+  },
+  "mode": {
+    "label": "モード",
+    "tutor": "チューター",
+    "answer": "回答",
+    "tutorHint": "誘導質問とヒント（ソクラテス式）",
+    "answerHint": "最終回答を先に、説明を後に"
   }
 }

@@ -116,5 +116,12 @@
     "guestDesc": "Du bist drin. Sitzungen bleiben nur auf diesem Gerät.",
     "authFailed": "Anmeldung fehlgeschlagen",
     "guestUnavailable": "Gastmodus nicht verfügbar"
+  },
+  "mode": {
+    "label": "Modus",
+    "tutor": "Tutor",
+    "answer": "Antwort",
+    "tutorHint": "Geführte Fragen und Hinweise (sokratisch)",
+    "answerHint": "Endantwort zuerst, dann die Erklärung"
   }
 }

@@ -116,5 +116,12 @@
     "guestDesc": "已进入。会话仅保存在本设备。",
     "authFailed": "认证失败",
     "guestUnavailable": "访客模式不可用"
+  },
+  "mode": {
+    "label": "模式",
+    "tutor": "导师",
+    "answer": "答案",
+    "tutorHint": "引导式提问与提示（苏格拉底式）",
+    "answerHint": "先给最终答案，再给解释"
   }
 }
