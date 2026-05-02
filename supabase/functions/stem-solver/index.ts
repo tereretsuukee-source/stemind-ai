@@ -87,7 +87,9 @@ serve(async (req) => {
     };
     const langCode = (typeof language === "string" ? language.split("-")[0] : "en").toLowerCase();
     const langName = LANGUAGE_NAMES[langCode] ?? "English";
-    const localizedSystemPrompt = `${SYSTEM_PROMPT}\n\nIMPORTANT: Respond entirely in ${langName} (${langCode}). All explanations, hints, and prose must be in ${langName}. Keep mathematical notation in standard LaTeX (do NOT translate symbols, variables, or LaTeX commands).`;
+    const modeKey = mode === "answer" ? "answer" : "tutor";
+    const basePrompt = modeKey === "answer" ? ANSWER_PROMPT : TUTOR_PROMPT;
+    const localizedSystemPrompt = `${basePrompt}\n\nIMPORTANT: Respond entirely in ${langName} (${langCode}). All explanations, hints, and prose must be in ${langName}. Keep mathematical notation in standard LaTeX (do NOT translate symbols, variables, or LaTeX commands). The phrase "**Final answer:**" must remain in English so the UI can detect it.`;
 
     // Call Lovable AI with streaming
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
