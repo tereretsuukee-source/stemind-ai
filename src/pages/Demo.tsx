@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ModeToggle, loadMode, saveMode, type SolverMode } from "@/components/ModeToggle";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -53,6 +54,7 @@ const Demo = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastInput, setLastInput] = useState<string>("");
+  const [mode, setMode] = useState<SolverMode>(() => loadMode());
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -78,6 +80,7 @@ const Demo = () => {
         body: JSON.stringify({
           messages: updated,
           language: i18n.language?.split("-")[0] ?? "en",
+          mode,
         }),
       });
 
@@ -262,6 +265,15 @@ const Demo = () => {
       </ScrollArea>
 
       <form onSubmit={onSubmit} className="border-t border-border p-3 bg-card/30 backdrop-blur-sm shrink-0">
+        <div className="max-w-2xl mx-auto mb-2 flex justify-end">
+          <ModeToggle
+            value={mode}
+            onChange={(m) => {
+              setMode(m);
+              saveMode(m);
+            }}
+          />
+        </div>
         <div className="max-w-2xl mx-auto flex gap-2 items-end">
           <Textarea
             value={input}

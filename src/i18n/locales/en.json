@@ -140,5 +140,12 @@
     "guestDesc": "You're in. Sessions persist on this device only.",
     "authFailed": "Authentication failed",
     "guestUnavailable": "Guest mode unavailable"
+  },
+  "mode": {
+    "label": "Mode",
+    "tutor": "Tutor",
+    "answer": "Answer",
+    "tutorHint": "Guided questions and hints (Socratic)",
+    "answerHint": "Final answer first, then explanation"
   }
 }

@@ -116,5 +116,12 @@
     "guestDesc": "Vous êtes connecté. Les sessions restent uniquement sur cet appareil.",
     "authFailed": "Échec de l'authentification",
     "guestUnavailable": "Mode invité indisponible"
+  },
+  "mode": {
+    "label": "Mode",
+    "tutor": "Tuteur",
+    "answer": "Réponse",
+    "tutorHint": "Questions guidées et indices (socratique)",
+    "answerHint": "Réponse finale d'abord, puis l'explication"
   }
 }

@@ -18,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnswerSummary } from "@/components/AnswerSummary";
 import { useStreak } from "@/hooks/useStreak";
+import { ModeToggle, loadMode, saveMode, type SolverMode } from "@/components/ModeToggle";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stem-solver`;
 
@@ -64,6 +65,7 @@ const SessionDetail = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [chatError, setChatError] = useState<{ kind: "auth" | "network" | "stream" | "generic"; message: string; lastInput: string } | null>(null);
   const [lastAnswerMeta, setLastAnswerMeta] = useState<AnswerMeta | null>(null);
+  const [mode, setMode] = useState<SolverMode>(() => loadMode());
   const { data: streak = 0 } = useStreak(user?.id);
   const scrollRef = useRef<HTMLDivElement>(null);
   const prefillHandledRef = useRef(false);
@@ -228,6 +230,7 @@ const SessionDetail = () => {
               sessionId,
               subject: sessionRecord?.subject,
               language: i18n.language?.split("-")[0] ?? "en",
+              mode,
             }),
           });
         } catch (networkErr) {
@@ -326,7 +329,7 @@ const SessionDetail = () => {
         setIsStreaming(false);
       }
     },
-    [messages, sessionId, session, sessionRecord, saveProblemAndSolution, t, i18n.language]
+    [messages, sessionId, session, sessionRecord, saveProblemAndSolution, t, i18n.language, mode]
   );
 
   const handleSubmit = (e: FormEvent) => {
@@ -364,7 +367,7 @@ const SessionDetail = () => {
             <ArrowLeft className="w-4 h-4" />
           </Link>
         </Button>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="font-display font-semibold text-sm truncate">
             {sessionRecord?.title ?? t("session.fallbackTitle")}
           </h1>
@@ -372,6 +375,14 @@ const SessionDetail = () => {
             {sessionRecord?.subject || t("sessions.general")} · {t("session.subtitle")}
           </p>
         </div>
+        <ModeToggle
+          value={mode}
+          onChange={(m) => {
+            setMode(m);
+            saveMode(m);
+          }}
+          className="shrink-0"
+        />
       </header>
 
       {/* Chat area */}

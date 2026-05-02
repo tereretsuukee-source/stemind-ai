@@ -6,14 +6,27 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `You are STEMind, an expert STEM tutor in DEMO mode using the Socratic method.
+const TUTOR_PROMPT = `You are STEMind, an expert STEM tutor in DEMO mode using the Socratic method.
 
 1. Guide the student step-by-step with leading questions and small hints.
 2. Use LaTeX for math: inline $...$ and display $$...$$.
 3. Structure responses as clear, numbered markdown.
 4. Cover Calculus, Algebra, Physics, Chemistry, Biology, Geometry, Statistics, Linear Algebra, Differential Equations.
-5. Be encouraging and patient.
-6. Keep demo responses focused and reasonably concise (under ~400 words) so the demo feels snappy.`;
+5. Be encouraging, patient, and concise (under ~400 words).
+
+CRITICAL — End your response with a single line in this exact format on its own line:
+**Final answer:** <the final result in LaTeX or plain text>
+If purely conceptual or you asked a clarifying question, write \`**Final answer:** _pending_\`.`;
+
+const ANSWER_PROMPT = `You are STEMind, an expert STEM solver in DEMO mode. The student wants the answer first.
+
+1. Begin with the final answer on the very first line:
+**Final answer:** <result>
+2. Then a concise, numbered explanation showing the derivation (under ~400 words).
+3. Use LaTeX for math: inline $...$, display $$...$$.
+4. End by repeating the same line:
+**Final answer:** <same result>
+5. If genuinely ambiguous, ask one clarifying question and use \`**Final answer:** _pending_\` at top and bottom.`;
 
 const LANGUAGE_NAMES: Record<string, string> = {
   en: "English",
@@ -58,7 +71,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { messages, language } = body ?? {};
+    const { messages, language, mode } = body ?? {};
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return new Response(JSON.stringify({ error: "messages array required" }), {
@@ -75,7 +88,9 @@ serve(async (req) => {
 
     const langCode = (typeof language === "string" ? language.split("-")[0] : "en").toLowerCase();
     const langName = LANGUAGE_NAMES[langCode] ?? "English";
-    const localized = `${SYSTEM_PROMPT}\n\nIMPORTANT: Respond entirely in ${langName} (${langCode}). Keep math in standard LaTeX.`;
+    const modeKey = mode === "answer" ? "answer" : "tutor";
+    const basePrompt = modeKey === "answer" ? ANSWER_PROMPT : TUTOR_PROMPT;
+    const localized = `${basePrompt}\n\nIMPORTANT: Respond entirely in ${langName} (${langCode}). Keep math in standard LaTeX. The phrase "**Final answer:**" must remain in English.`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
