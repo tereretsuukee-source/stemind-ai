@@ -367,7 +367,7 @@ const SessionDetail = () => {
             <ArrowLeft className="w-4 h-4" />
           </Link>
         </Button>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="font-display font-semibold text-sm truncate">
             {sessionRecord?.title ?? t("session.fallbackTitle")}
           </h1>
@@ -375,6 +375,14 @@ const SessionDetail = () => {
             {sessionRecord?.subject || t("sessions.general")} · {t("session.subtitle")}
           </p>
         </div>
+        <ModeToggle
+          value={mode}
+          onChange={(m) => {
+            setMode(m);
+            saveMode(m);
+          }}
+          className="shrink-0"
+        />
       </header>
 
       {/* Chat area */}
