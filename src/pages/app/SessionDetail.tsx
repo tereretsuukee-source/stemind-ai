@@ -18,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnswerSummary } from "@/components/AnswerSummary";
 import { useStreak } from "@/hooks/useStreak";
+import { ModeToggle, loadMode, saveMode, type SolverMode } from "@/components/ModeToggle";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stem-solver`;
 
