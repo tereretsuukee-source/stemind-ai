@@ -329,7 +329,7 @@ const SessionDetail = () => {
         setIsStreaming(false);
       }
     },
-    [messages, sessionId, session, sessionRecord, saveProblemAndSolution, t, i18n.language]
+    [messages, sessionId, session, sessionRecord, saveProblemAndSolution, t, i18n.language, mode]
   );
 
   const handleSubmit = (e: FormEvent) => {
