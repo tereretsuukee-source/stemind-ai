@@ -265,6 +265,15 @@ const Demo = () => {
       </ScrollArea>
 
       <form onSubmit={onSubmit} className="border-t border-border p-3 bg-card/30 backdrop-blur-sm shrink-0">
+        <div className="max-w-2xl mx-auto mb-2 flex justify-end">
+          <ModeToggle
+            value={mode}
+            onChange={(m) => {
+              setMode(m);
+              saveMode(m);
+            }}
+          />
+        </div>
         <div className="max-w-2xl mx-auto flex gap-2 items-end">
           <Textarea
             value={input}
