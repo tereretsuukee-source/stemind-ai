@@ -65,6 +65,7 @@ const SessionDetail = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [chatError, setChatError] = useState<{ kind: "auth" | "network" | "stream" | "generic"; message: string; lastInput: string } | null>(null);
   const [lastAnswerMeta, setLastAnswerMeta] = useState<AnswerMeta | null>(null);
+  const [mode, setMode] = useState<SolverMode>(() => loadMode());
   const { data: streak = 0 } = useStreak(user?.id);
   const scrollRef = useRef<HTMLDivElement>(null);
   const prefillHandledRef = useRef(false);
