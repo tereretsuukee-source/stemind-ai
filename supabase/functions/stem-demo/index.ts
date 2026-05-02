@@ -71,7 +71,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { messages, language } = body ?? {};
+    const { messages, language, mode } = body ?? {};
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return new Response(JSON.stringify({ error: "messages array required" }), {
@@ -88,7 +88,9 @@ serve(async (req) => {
 
     const langCode = (typeof language === "string" ? language.split("-")[0] : "en").toLowerCase();
     const langName = LANGUAGE_NAMES[langCode] ?? "English";
-    const localized = `${SYSTEM_PROMPT}\n\nIMPORTANT: Respond entirely in ${langName} (${langCode}). Keep math in standard LaTeX.`;
+    const modeKey = mode === "answer" ? "answer" : "tutor";
+    const basePrompt = modeKey === "answer" ? ANSWER_PROMPT : TUTOR_PROMPT;
+    const localized = `${basePrompt}\n\nIMPORTANT: Respond entirely in ${langName} (${langCode}). Keep math in standard LaTeX. The phrase "**Final answer:**" must remain in English.`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
