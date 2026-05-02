@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ModeToggle, loadMode, saveMode, type SolverMode } from "@/components/ModeToggle";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
