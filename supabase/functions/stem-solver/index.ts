@@ -66,7 +66,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { messages, sessionId, problemId, subject, topic, language } = body;
+    const { messages, sessionId, problemId, subject, topic, language, mode } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: "messages array required" }), {
