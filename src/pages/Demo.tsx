@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ModeToggle, loadMode, saveMode, type SolverMode } from "@/components/ModeToggle";
+import { FinalAnswerCard, extractFinalAnswer } from "@/components/FinalAnswerCard";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -203,24 +204,36 @@ const Demo = () => {
             </Card>
           )}
 
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              {msg.role === "assistant" && (
-                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center mr-2 mt-1 shrink-0">
-                  <Bot className="w-4 h-4 text-primary" />
+          {messages.map((msg, i) => {
+            const isLastAssistant =
+              msg.role === "assistant" && i === messages.length - 1 && !isStreaming;
+            const final = isLastAssistant ? extractFinalAnswer(msg.content) : null;
+            return (
+              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                {msg.role === "assistant" && (
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center mr-2 mt-1 shrink-0">
+                    <Bot className="w-4 h-4 text-primary" />
+                  </div>
+                )}
+                <div
+                  className={
+                    msg.role === "user"
+                      ? "max-w-[85%] rounded-2xl rounded-br-sm bg-primary text-primary-foreground px-4 py-3 text-sm whitespace-pre-wrap break-words"
+                      : "max-w-[85%] rounded-2xl rounded-bl-sm bg-card border border-border/60 px-4 py-3 text-sm prose prose-sm dark:prose-invert max-w-none break-words"
+                  }
+                >
+                  {msg.role === "user" ? msg.content : (
+                    <>
+                      <RenderMath text={msg.content} />
+                      {final?.answer && (
+                        <FinalAnswerCard answer={final.answer} verification={final.verification} />
+                      )}
+                    </>
+                  )}
                 </div>
-              )}
-              <div
-                className={
-                  msg.role === "user"
-                    ? "max-w-[85%] rounded-2xl rounded-br-sm bg-primary text-primary-foreground px-4 py-3 text-sm whitespace-pre-wrap"
-                    : "max-w-[85%] rounded-2xl rounded-bl-sm bg-card border border-border/60 px-4 py-3 text-sm prose prose-sm dark:prose-invert max-w-none"
-                }
-              >
-                {msg.role === "user" ? msg.content : <RenderMath text={msg.content} />}
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {isStreaming && messages[messages.length - 1]?.role === "user" && (
             <div className="flex justify-start">
