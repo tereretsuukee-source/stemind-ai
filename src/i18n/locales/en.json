@@ -83,7 +83,24 @@
     "answeredLabel": "Answer verified",
     "mastery": "mastery",
     "streakDays_one": "{{count}} day streak",
-    "streakDays_other": "{{count}} day streak"
+    "streakDays_other": "{{count}} day streak",
+    "export": "Export transcript",
+    "finalAnswerLabel": "Final answer",
+    "verifPassed": "Verified",
+    "verifUncertain": "Uncertain",
+    "verifFailed": "Failed"
+  },
+  "tour": {
+    "step1Title": "Pick Tutor or Answer mode",
+    "step1Desc": "Tutor mode guides you Socratically. Answer mode gives the result first, steps after. Switch any time from the chat header.",
+    "step2Title": "Try the example session",
+    "step2Desc": "We pre-load a real Calculus problem so you can see how STEMind solves and verifies in one click.",
+    "step3Title": "Watch your knowledge graph grow",
+    "step3Desc": "Every solved problem updates your mastery. Visit the Knowledge tab to see weak spots and strong topics.",
+    "stepCounter": "Step {{current}} of {{total}}",
+    "next": "Next",
+    "done": "Got it",
+    "skip": "Skip"
   },
   "demo": {
     "title": "STEMind Demo",
