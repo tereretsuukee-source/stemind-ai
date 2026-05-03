@@ -60,7 +60,9 @@
     "created": "Session created",
     "deleted": "Session deleted",
     "createError": "Couldn't create session",
-    "deleteError": "Couldn't delete session"
+    "deleteError": "Couldn't delete session",
+    "problemCount_one": "{{count}} problem",
+    "problemCount_other": "{{count}} problems"
   },
   "session": {
     "back": "Back to sessions",
