@@ -2,7 +2,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Send, Loader2, Sparkles, Bot, AlertTriangle, RefreshCw, LogIn,
+  ArrowLeft, Send, Loader2, Sparkles, Bot, AlertTriangle, RefreshCw, LogIn, Download,
 } from "lucide-react";
 import "katex/dist/katex.min.css";
 import { BlockMath, InlineMath } from "react-katex";
@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AnswerSummary } from "@/components/AnswerSummary";
 import { useStreak } from "@/hooks/useStreak";
 import { ModeToggle, loadMode, saveMode, type SolverMode } from "@/components/ModeToggle";
+import { FinalAnswerCard, extractFinalAnswer } from "@/components/FinalAnswerCard";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stem-solver`;
 
