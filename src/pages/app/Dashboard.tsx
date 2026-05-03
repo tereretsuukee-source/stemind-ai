@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OnboardingCard } from "@/components/OnboardingCard";
+import { FirstRunTour } from "@/components/FirstRunTour";
 import { useStreak } from "@/hooks/useStreak";
 
 
@@ -68,11 +69,13 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="p-6 md:p-10 max-w-7xl mx-auto">
-      <header className="mb-10">
+    <div className="p-6 md:p-10 max-w-7xl mx-auto w-full">
+      <header className="mb-8">
         <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-2">{t("dashboard.title")}</h1>
         <p className="text-muted-foreground">{t("dashboard.subtitle")}</p>
       </header>
+
+      <FirstRunTour />
 
       {error && (
         <Card className="p-5 border-destructive/40 bg-destructive/5 mb-6 flex items-start gap-3">

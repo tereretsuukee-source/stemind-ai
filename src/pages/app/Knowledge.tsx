@@ -34,7 +34,7 @@ const Knowledge = () => {
   }, {});
 
   return (
-    <div className="p-6 md:p-10 max-w-6xl mx-auto">
+    <div className="p-6 md:p-10 max-w-6xl mx-auto w-full">
       <header className="mb-8">
         <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-2">{t("knowledge.title")}</h1>
         <p className="text-muted-foreground">{t("knowledge.subtitle")}</p>

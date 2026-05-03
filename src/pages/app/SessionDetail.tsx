@@ -2,7 +2,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Send, Loader2, Sparkles, Bot, AlertTriangle, RefreshCw, LogIn,
+  ArrowLeft, Send, Loader2, Sparkles, Bot, AlertTriangle, RefreshCw, LogIn, Download,
 } from "lucide-react";
 import "katex/dist/katex.min.css";
 import { BlockMath, InlineMath } from "react-katex";
@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AnswerSummary } from "@/components/AnswerSummary";
 import { useStreak } from "@/hooks/useStreak";
 import { ModeToggle, loadMode, saveMode, type SolverMode } from "@/components/ModeToggle";
+import { FinalAnswerCard, extractFinalAnswer } from "@/components/FinalAnswerCard";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stem-solver`;
 
@@ -141,14 +142,15 @@ const SessionDetail = () => {
         return { topic: sessionRecord?.subject ?? null, masteryDelta: 0 };
       }
 
-      // Save solution
+      // Save solution with verification heuristic
+      const { verification } = extractFinalAnswer(aiResponse);
       await supabase.from("solutions").insert({
         problem_id: problem.id,
         user_id: user.id,
         agent_role: "solver",
         content: aiResponse,
-        confidence_score: 1.0,
-        verification_passed: true,
+        confidence_score: verification === "passed" ? 0.95 : verification === "uncertain" ? 0.6 : 0.2,
+        verification_passed: verification === "passed",
       });
 
       // Update knowledge node
@@ -358,10 +360,28 @@ const SessionDetail = () => {
     setSearchParams(next, { replace: true });
   }, [searchParams, existingProblems, session, isStreaming, streamChat, setSearchParams]);
 
+  const handleExport = () => {
+    const lines: string[] = [];
+    lines.push(`# ${sessionRecord?.title ?? "STEMind session"}`);
+    if (sessionRecord?.subject) lines.push(`_Subject: ${sessionRecord.subject}_`);
+    lines.push("");
+    for (const m of messages) {
+      lines.push(m.role === "user" ? `## Q\n${m.content}` : `## A\n${m.content}`);
+      lines.push("");
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(sessionRecord?.title ?? "session").replace(/[^\w-]+/g, "_")}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col flex-1 min-h-0 h-full">
       {/* Header */}
-      <header className="px-4 py-3 border-b border-border flex items-center gap-3 shrink-0 bg-card/50 backdrop-blur-sm">
+      <header className="px-3 sm:px-4 py-2.5 border-b border-border flex items-center gap-2 shrink-0 bg-card/50 backdrop-blur-sm">
         <Button variant="ghost" size="icon" asChild className="shrink-0">
           <Link to="/app/sessions" aria-label={t("session.back")}>
             <ArrowLeft className="w-4 h-4" />
@@ -371,7 +391,7 @@ const SessionDetail = () => {
           <h1 className="font-display font-semibold text-sm truncate">
             {sessionRecord?.title ?? t("session.fallbackTitle")}
           </h1>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[11px] text-muted-foreground truncate">
             {sessionRecord?.subject || t("sessions.general")} · {t("session.subtitle")}
           </p>
         </div>
@@ -383,6 +403,17 @@ const SessionDetail = () => {
           }}
           className="shrink-0"
         />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleExport}
+          disabled={messages.length === 0}
+          aria-label={t("session.export")}
+          title={t("session.export")}
+          className="shrink-0"
+        >
+          <Download className="w-4 h-4" />
+        </Button>
       </header>
 
       {/* Chat area */}
@@ -398,31 +429,43 @@ const SessionDetail = () => {
             </div>
           )}
 
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              {msg.role === "assistant" && (
-                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center mr-2 mt-1 shrink-0">
-                  <Bot className="w-4 h-4 text-primary" />
-                </div>
-              )}
+          {messages.map((msg, i) => {
+            const isLastAssistant =
+              msg.role === "assistant" &&
+              i === messages.length - 1 &&
+              !isStreaming;
+            const final = isLastAssistant ? extractFinalAnswer(msg.content) : null;
+            return (
               <div
-                className={
-                  msg.role === "user"
-                    ? "max-w-[85%] rounded-2xl rounded-br-sm bg-primary text-primary-foreground px-4 py-3 text-sm whitespace-pre-wrap"
-                    : "max-w-[85%] rounded-2xl rounded-bl-sm bg-card border border-border/60 px-4 py-3 text-sm prose prose-sm dark:prose-invert max-w-none"
-                }
+                key={i}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
-                {msg.role === "user" ? (
-                  msg.content
-                ) : (
-                  <RenderMath text={msg.content} />
+                {msg.role === "assistant" && (
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center mr-2 mt-1 shrink-0">
+                    <Bot className="w-4 h-4 text-primary" />
+                  </div>
                 )}
+                <div
+                  className={
+                    msg.role === "user"
+                      ? "max-w-[85%] rounded-2xl rounded-br-sm bg-primary text-primary-foreground px-4 py-3 text-sm whitespace-pre-wrap break-words"
+                      : "max-w-[85%] rounded-2xl rounded-bl-sm bg-card border border-border/60 px-4 py-3 text-sm prose prose-sm dark:prose-invert max-w-none break-words"
+                  }
+                >
+                  {msg.role === "user" ? (
+                    msg.content
+                  ) : (
+                    <>
+                      <RenderMath text={msg.content} />
+                      {final?.answer && (
+                        <FinalAnswerCard answer={final.answer} verification={final.verification} />
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {isStreaming && messages[messages.length - 1]?.role === "user" && (
             <div className="flex justify-start">

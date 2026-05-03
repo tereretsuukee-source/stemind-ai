@@ -12,6 +12,9 @@ const Footer = () => {
             <span className="text-lg font-display font-bold tracking-tight text-foreground">
               STEM<span className="text-gradient">ind</span>
             </span>
+            <span className="hidden sm:inline text-xs text-muted-foreground border-l border-border pl-3 ml-1">
+              Triple-verified AI tutor for STEM
+            </span>
           </div>
 
           <div className="flex items-center gap-8">
