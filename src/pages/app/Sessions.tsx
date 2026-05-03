@@ -33,11 +33,11 @@ const Sessions = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("study_sessions")
-        .select("*")
+        .select("*, problems(id)")
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return data as (typeof data[number] & { problems: { id: string }[] })[];
     },
     enabled: !!user,
   });
@@ -82,7 +82,7 @@ const Sessions = () => {
   };
 
   return (
-    <div className="p-6 md:p-10 max-w-5xl mx-auto">
+    <div className="p-6 md:p-10 max-w-5xl mx-auto w-full">
       <header className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight">{t("sessions.title")}</h1>
@@ -147,7 +147,7 @@ const Sessions = () => {
                 <Link to={`/app/sessions/${s.id}`} className="min-w-0 flex-1">
                   <h3 className="font-display font-semibold truncate">{s.title}</h3>
                   <div className="text-xs text-muted-foreground mt-1">
-                    {s.subject || t("sessions.general")} · {new Date(s.created_at).toLocaleDateString()}
+                    {s.subject || t("sessions.general")} · {new Date(s.created_at).toLocaleDateString()} · {t("sessions.problemCount", { count: s.problems?.length ?? 0 })}
                   </div>
                 </Link>
                 <div className="flex items-center gap-1 shrink-0">
