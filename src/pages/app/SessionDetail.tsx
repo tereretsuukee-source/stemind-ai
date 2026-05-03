@@ -360,10 +360,28 @@ const SessionDetail = () => {
     setSearchParams(next, { replace: true });
   }, [searchParams, existingProblems, session, isStreaming, streamChat, setSearchParams]);
 
+  const handleExport = () => {
+    const lines: string[] = [];
+    lines.push(`# ${sessionRecord?.title ?? "STEMind session"}`);
+    if (sessionRecord?.subject) lines.push(`_Subject: ${sessionRecord.subject}_`);
+    lines.push("");
+    for (const m of messages) {
+      lines.push(m.role === "user" ? `## Q\n${m.content}` : `## A\n${m.content}`);
+      lines.push("");
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(sessionRecord?.title ?? "session").replace(/[^\w-]+/g, "_")}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col flex-1 min-h-0 h-full">
       {/* Header */}
-      <header className="px-4 py-3 border-b border-border flex items-center gap-3 shrink-0 bg-card/50 backdrop-blur-sm">
+      <header className="px-3 sm:px-4 py-2.5 border-b border-border flex items-center gap-2 shrink-0 bg-card/50 backdrop-blur-sm">
         <Button variant="ghost" size="icon" asChild className="shrink-0">
           <Link to="/app/sessions" aria-label={t("session.back")}>
             <ArrowLeft className="w-4 h-4" />
@@ -373,7 +391,7 @@ const SessionDetail = () => {
           <h1 className="font-display font-semibold text-sm truncate">
             {sessionRecord?.title ?? t("session.fallbackTitle")}
           </h1>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[11px] text-muted-foreground truncate">
             {sessionRecord?.subject || t("sessions.general")} · {t("session.subtitle")}
           </p>
         </div>
@@ -385,6 +403,17 @@ const SessionDetail = () => {
           }}
           className="shrink-0"
         />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleExport}
+          disabled={messages.length === 0}
+          aria-label={t("session.export")}
+          title={t("session.export")}
+          className="shrink-0"
+        >
+          <Download className="w-4 h-4" />
+        </Button>
       </header>
 
       {/* Chat area */}
