@@ -142,14 +142,15 @@ const SessionDetail = () => {
         return { topic: sessionRecord?.subject ?? null, masteryDelta: 0 };
       }
 
-      // Save solution
+      // Save solution with verification heuristic
+      const { verification } = extractFinalAnswer(aiResponse);
       await supabase.from("solutions").insert({
         problem_id: problem.id,
         user_id: user.id,
         agent_role: "solver",
         content: aiResponse,
-        confidence_score: 1.0,
-        verification_passed: true,
+        confidence_score: verification === "passed" ? 0.95 : verification === "uncertain" ? 0.6 : 0.2,
+        verification_passed: verification === "passed",
       });
 
       // Update knowledge node
