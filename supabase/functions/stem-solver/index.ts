@@ -113,33 +113,33 @@ serve(async (req) => {
 
     if (!aiResponse.ok) {
       const status = aiResponse.status;
+      const detail = await aiResponse.text().catch(() => "");
+      console.error("AI gateway error:", status, detail.slice(0, 500));
       if (status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again shortly." }), {
+        return new Response(JSON.stringify({ error: "Service is busy, please try again shortly." }), {
           status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "10" },
         });
       }
       if (status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), {
-          status: 402,
+        return new Response(JSON.stringify({ error: "Service temporarily unavailable." }), {
+          status: 503,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const t = await aiResponse.text();
-      console.error("AI gateway error:", status, t);
-      return new Response(JSON.stringify({ error: "AI service error" }), {
-        status: 500,
+      return new Response(JSON.stringify({ error: "Service temporarily unavailable." }), {
+        status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     return new Response(aiResponse.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-store" },
     });
   } catch (e) {
     console.error("stem-solver error:", e);
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      JSON.stringify({ error: "Unexpected error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
