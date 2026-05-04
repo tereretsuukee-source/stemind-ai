@@ -4,7 +4,17 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  // Strip identifying server fingerprints where possible
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "no-referrer",
 };
+
+const json = (body: unknown, status: number, extra: Record<string, string> = {}) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json", ...extra },
+  });
 
 const TUTOR_PROMPT = `You are STEMind, an expert STEM tutor in DEMO mode using the Socratic method.
 
@@ -14,9 +24,10 @@ const TUTOR_PROMPT = `You are STEMind, an expert STEM tutor in DEMO mode using t
 4. Cover Calculus, Algebra, Physics, Chemistry, Biology, Geometry, Statistics, Linear Algebra, Differential Equations.
 5. Be encouraging, patient, and concise (under ~400 words).
 
-CRITICAL — End your response with a single line in this exact format on its own line:
-**Final answer:** <the final result in LaTeX or plain text>
-If purely conceptual or you asked a clarifying question, write \`**Final answer:** _pending_\`.`;
+CRITICAL OUTPUT CONTRACT — End your response with a single line in this EXACT format on its own line:
+**Final answer:** <a concrete final result in LaTeX or plain text>
+
+You MUST always produce a concrete final answer. NEVER write "_pending_", "TBD", "unknown", "to be determined", or any placeholder. If the student's question is genuinely ambiguous, make the most reasonable assumption, state it briefly, and still give a concrete final answer.`;
 
 const ANSWER_PROMPT = `You are STEMind, an expert STEM solver in DEMO mode. The student wants the answer first.
 
@@ -26,7 +37,8 @@ const ANSWER_PROMPT = `You are STEMind, an expert STEM solver in DEMO mode. The 
 3. Use LaTeX for math: inline $...$, display $$...$$.
 4. End by repeating the same line:
 **Final answer:** <same result>
-5. If genuinely ambiguous, ask one clarifying question and use \`**Final answer:** _pending_\` at top and bottom.`;
+
+CRITICAL: NEVER write "_pending_", "TBD", "unknown", or any placeholder as the final answer. If the question is genuinely ambiguous, make the most reasonable assumption, state it in one line, and still give a concrete final answer at top and bottom.`;
 
 const LANGUAGE_NAMES: Record<string, string> = {
   en: "English",
@@ -37,21 +49,47 @@ const LANGUAGE_NAMES: Record<string, string> = {
   ja: "Japanese",
 };
 
-// Very small in-memory rate limit per IP (best-effort, resets on cold start)
+// Best-effort in-memory limiter per IP. Resets on cold start.
+// (Platform does not yet provide distributed rate-limiting primitives.)
 const ipHits = new Map<string, { count: number; resetAt: number }>();
 const WINDOW_MS = 60_000;
 const MAX_PER_WINDOW = 8;
 
+const MAX_BODY_BYTES = 16 * 1024; // 16 KB demo cap
+const MAX_MESSAGES = 8;
+const MAX_MSG_CHARS = 2000;
+
 serve(async (req) => {
+  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // 405: only POST allowed
+  if (req.method !== "POST") {
+    return json({ error: "Method not allowed" }, 405, { Allow: "POST, OPTIONS" });
+  }
+
+  // 415: require JSON
+  const ctype = req.headers.get("content-type") ?? "";
+  if (!ctype.toLowerCase().includes("application/json")) {
+    return json({ error: "Unsupported media type, expected application/json" }, 415);
+  }
+
+  // Honeypot: clients legitimately should not send this header
+  if (req.headers.get("x-demo-honeypot")) {
+    return json({ error: "Bad request" }, 400);
+  }
+
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    if (!LOVABLE_API_KEY) {
+      // Don't leak which env var is missing
+      console.error("stem-demo: missing LOVABLE_API_KEY");
+      return json({ error: "Service unavailable" }, 503);
+    }
 
-    // Rate limiting by IP
+    // Best-effort per-IP limit
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
       req.headers.get("cf-connecting-ip") ||
@@ -63,30 +101,62 @@ serve(async (req) => {
     } else {
       entry.count += 1;
       if (entry.count > MAX_PER_WINDOW) {
-        return new Response(
-          JSON.stringify({ error: "Demo rate limit reached. Sign up for unlimited usage." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        const retry = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
+        return json(
+          { error: "Demo rate limit reached. Sign up for unlimited usage." },
+          429,
+          { "Retry-After": String(retry) }
         );
       }
     }
 
-    const body = await req.json();
-    const { messages, language, mode } = body ?? {};
-
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return new Response(JSON.stringify({ error: "messages array required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // 413: enforce body size cap before parsing
+    const cl = parseInt(req.headers.get("content-length") ?? "0", 10);
+    if (cl && cl > MAX_BODY_BYTES) {
+      return json({ error: "Payload too large" }, 413);
+    }
+    const raw = await req.text();
+    if (raw.length > MAX_BODY_BYTES) {
+      return json({ error: "Payload too large" }, 413);
     }
 
-    // Cap demo conversation length to keep cost predictable
-    const trimmed = messages.slice(-8).map((m: { role?: string; content?: unknown }) => ({
-      role: m.role === "assistant" ? "assistant" : "user",
-      content: typeof m.content === "string" ? m.content.slice(0, 2000) : "",
-    }));
+    // 400: parse JSON safely without leaking parser errors
+    let body: unknown;
+    try {
+      body = JSON.parse(raw);
+    } catch {
+      return json({ error: "Invalid JSON body" }, 400);
+    }
 
-    const langCode = (typeof language === "string" ? language.split("-")[0] : "en").toLowerCase();
+    // 400: shape validation
+    if (!body || typeof body !== "object") {
+      return json({ error: "Invalid request body" }, 400);
+    }
+    const { messages, language, mode } = body as {
+      messages?: unknown;
+      language?: unknown;
+      mode?: unknown;
+    };
+    if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES) {
+      return json({ error: "messages must be a non-empty array (max 8)" }, 400);
+    }
+    const trimmed: { role: "user" | "assistant"; content: string }[] = [];
+    for (const m of messages) {
+      if (!m || typeof m !== "object") {
+        return json({ error: "Invalid message entry" }, 400);
+      }
+      const mm = m as { role?: unknown; content?: unknown };
+      if (typeof mm.content !== "string") {
+        return json({ error: "Invalid message content" }, 400);
+      }
+      const role: "user" | "assistant" = mm.role === "assistant" ? "assistant" : "user";
+      trimmed.push({ role, content: mm.content.slice(0, MAX_MSG_CHARS) });
+    }
+
+    const langCode = (typeof language === "string" ? language.split("-")[0] : "en")
+      .toLowerCase()
+      .replace(/[^a-z]/g, "")
+      .slice(0, 5);
     const langName = LANGUAGE_NAMES[langCode] ?? "English";
     const modeKey = mode === "answer" ? "answer" : "tutor";
     const basePrompt = modeKey === "answer" ? ANSWER_PROMPT : TUTOR_PROMPT;
@@ -107,34 +177,24 @@ serve(async (req) => {
 
     if (!aiResponse.ok) {
       const status = aiResponse.status;
+      // Log details server-side, return generic messages to client (no provider/model leak)
+      const detail = await aiResponse.text().catch(() => "");
+      console.error("stem-demo upstream error:", status, detail.slice(0, 500));
       if (status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again shortly." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "Service is busy, please try again shortly." }, 429, { "Retry-After": "10" });
       }
       if (status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "Demo temporarily unavailable." }, 503);
       }
-      const t = await aiResponse.text();
-      console.error("Demo AI gateway error:", status, t);
-      return new Response(JSON.stringify({ error: "AI service error" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Demo temporarily unavailable." }, 502);
     }
 
     return new Response(aiResponse.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-store" },
     });
   } catch (e) {
+    // Never echo raw error details to the client
     console.error("stem-demo error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return json({ error: "Unexpected error" }, 500);
   }
 });
