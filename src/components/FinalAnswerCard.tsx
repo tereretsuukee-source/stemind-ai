@@ -9,11 +9,15 @@ import { cn } from "@/lib/utils";
 export type Verification = "passed" | "uncertain" | "failed";
 
 const HEDGES = /\b(I'?m not sure|cannot determine|unable to|might be wrong|approximate|roughly|uncertain)\b/i;
+const PLACEHOLDER = /^(_?pending_?|tbd|unknown|n\/?a|to be determined|undefined|null)$/i;
 
 export const extractFinalAnswer = (text: string): { answer: string | null; verification: Verification } => {
   const m = text.match(/\*\*Final answer:\*\*\s*([\s\S]+?)(?:\n\s*\n|$)/i);
   if (!m) return { answer: null, verification: "uncertain" };
-  const answer = m[1].trim();
+  const answer = m[1].trim().replace(/^[`*_\s]+|[`*_\s]+$/g, "");
+  if (!answer || PLACEHOLDER.test(answer)) {
+    return { answer: null, verification: "failed" };
+  }
   const verification: Verification = HEDGES.test(text) ? "uncertain" : "passed";
   return { answer, verification };
 };
