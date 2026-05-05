@@ -111,6 +111,8 @@
     "welcomeDesc": "Run the example below or type your own STEM question. No signup needed — but progress isn't saved.",
     "prefilledQuestion": "Find the derivative of f(x) = x³·ln(x) and explain each step.",
     "runExample": "Run the example",
+    "captchaRequired": "Please complete the verification below.",
+    "captchaLoading": "Loading verification…",
     "signUpToSave": "Sign up to save",
     "likeIt": "Like what you see?",
     "upgradeNote": "Create a free account to save sessions, track mastery, and build your knowledge graph.",
