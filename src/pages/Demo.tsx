@@ -15,7 +15,25 @@ import { FinalAnswerCard, extractFinalAnswer } from "@/components/FinalAnswerCar
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-const DEMO_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stem-demo`;
+const DEMO_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stem-demo-public`;
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (el: HTMLElement, opts: {
+        sitekey: string;
+        callback: (token: string) => void;
+        "error-callback"?: () => void;
+        "expired-callback"?: () => void;
+        theme?: "light" | "dark" | "auto";
+        size?: "normal" | "compact" | "invisible" | "flexible";
+      }) => string;
+      reset: (id?: string) => void;
+      execute: (id?: string) => void;
+      remove: (id?: string) => void;
+    };
+  }
+}
 
 const RenderMath = ({ text }: { text: string }) => {
   const parts = text.split(/(\$\$[^$]+\$\$|\$[^$\n]+\$)/g);
