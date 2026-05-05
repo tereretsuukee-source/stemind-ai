@@ -2,3 +2,6 @@ project_id = "bnazuxpzudvcjxkbuemp"
 
 [functions.stem-demo]
 verify_jwt = false
+
+[functions.stem-demo-public]
+verify_jwt = false
