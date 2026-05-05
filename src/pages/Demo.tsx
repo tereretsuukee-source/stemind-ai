@@ -216,6 +216,9 @@ const Demo = () => {
       });
     } finally {
       setIsStreaming(false);
+      captchaTokenRef.current = null;
+      setCaptchaReady(false);
+      try { window.turnstile?.reset(widgetIdRef.current ?? undefined); } catch { /* noop */ }
     }
   };
 
