@@ -145,22 +145,17 @@ const Demo = () => {
     setInput("");
     setIsStreaming(true);
 
-    const userMsg: Msg = { role: "user", content: userText };
-    const updated = [...messages, userMsg];
-    setMessages(updated);
-    setInput("");
-    setIsStreaming(true);
-
     let assistantSoFar = "";
 
     try {
       const resp = await fetch(DEMO_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-turnstile-token": token },
         body: JSON.stringify({
           messages: updated,
           language: i18n.language?.split("-")[0] ?? "en",
           mode,
+          turnstileToken: token,
         }),
       });
 
