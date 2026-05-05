@@ -15,7 +15,25 @@ import { FinalAnswerCard, extractFinalAnswer } from "@/components/FinalAnswerCar
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-const DEMO_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stem-demo`;
+const DEMO_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stem-demo-public`;
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (el: HTMLElement, opts: {
+        sitekey: string;
+        callback: (token: string) => void;
+        "error-callback"?: () => void;
+        "expired-callback"?: () => void;
+        theme?: "light" | "dark" | "auto";
+        size?: "normal" | "compact" | "invisible" | "flexible";
+      }) => string;
+      reset: (id?: string) => void;
+      execute: (id?: string) => void;
+      remove: (id?: string) => void;
+    };
+  }
+}
 
 const RenderMath = ({ text }: { text: string }) => {
   const parts = text.split(/(\$\$[^$]+\$\$|\$[^$\n]+\$)/g);
@@ -56,7 +74,56 @@ const Demo = () => {
   const [error, setError] = useState<string | null>(null);
   const [lastInput, setLastInput] = useState<string>("");
   const [mode, setMode] = useState<SolverMode>(() => loadMode());
+  const [siteKey, setSiteKey] = useState<string | null>(null);
+  const [captchaReady, setCaptchaReady] = useState(false);
+  const captchaTokenRef = useRef<string | null>(null);
+  const widgetIdRef = useRef<string | null>(null);
+  const captchaContainerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Fetch site key + load Turnstile script once
+  useEffect(() => {
+    let cancelled = false;
+    fetch(DEMO_URL, { method: "GET" })
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d?.siteKey) setSiteKey(d.siteKey); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!siteKey) return;
+    const SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    const exists = document.querySelector(`script[src="${SRC}"]`);
+    const onLoad = () => {
+      if (!captchaContainerRef.current || !window.turnstile) return;
+      if (widgetIdRef.current) return;
+      widgetIdRef.current = window.turnstile.render(captchaContainerRef.current, {
+        sitekey: siteKey,
+        theme: "auto",
+        size: "flexible",
+        callback: (token) => {
+          captchaTokenRef.current = token;
+          setCaptchaReady(true);
+        },
+        "expired-callback": () => {
+          captchaTokenRef.current = null;
+          setCaptchaReady(false);
+        },
+        "error-callback": () => {
+          captchaTokenRef.current = null;
+          setCaptchaReady(false);
+        },
+      });
+    };
+    if (exists) { onLoad(); return; }
+    const s = document.createElement("script");
+    s.src = SRC;
+    s.async = true;
+    s.defer = true;
+    s.onload = onLoad;
+    document.head.appendChild(s);
+  }, [siteKey]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -65,6 +132,12 @@ const Demo = () => {
   const stream = async (userText: string) => {
     setError(null);
     setLastInput(userText);
+
+    const token = captchaTokenRef.current;
+    if (!token) {
+      setError(t("demo.captchaRequired", "Please complete the CAPTCHA below."));
+      return;
+    }
 
     const userMsg: Msg = { role: "user", content: userText };
     const updated = [...messages, userMsg];
@@ -77,11 +150,12 @@ const Demo = () => {
     try {
       const resp = await fetch(DEMO_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-turnstile-token": token },
         body: JSON.stringify({
           messages: updated,
           language: i18n.language?.split("-")[0] ?? "en",
           mode,
+          turnstileToken: token,
         }),
       });
 
@@ -142,6 +216,9 @@ const Demo = () => {
       });
     } finally {
       setIsStreaming(false);
+      captchaTokenRef.current = null;
+      setCaptchaReady(false);
+      try { window.turnstile?.reset(widgetIdRef.current ?? undefined); } catch { /* noop */ }
     }
   };
 
@@ -195,7 +272,7 @@ const Demo = () => {
               </div>
               <Button
                 onClick={() => stream(PREFILLED)}
-                disabled={isStreaming}
+                disabled={isStreaming || !captchaReady}
                 className="bg-gradient-stemind text-primary-foreground hover:opacity-90"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
@@ -287,6 +364,14 @@ const Demo = () => {
             }}
           />
         </div>
+        <div className="max-w-2xl mx-auto mb-2">
+          <div ref={captchaContainerRef} className="cf-turnstile flex justify-center" />
+          {!siteKey && (
+            <p className="text-[11px] text-muted-foreground text-center mt-1">
+              {t("demo.captchaLoading", "Loading verification…")}
+            </p>
+          )}
+        </div>
         <div className="max-w-2xl mx-auto flex gap-2 items-end">
           <Textarea
             value={input}
@@ -300,7 +385,13 @@ const Demo = () => {
               }
             }}
           />
-          <Button type="submit" size="icon" disabled={!input.trim() || isStreaming} className="shrink-0 bg-primary">
+          <Button
+            type="submit"
+            size="icon"
+            disabled={!input.trim() || isStreaming || !captchaReady}
+            className="shrink-0 bg-primary"
+            title={!captchaReady ? t("demo.captchaRequired", "Please complete the CAPTCHA below.") : undefined}
+          >
             {isStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </div>
