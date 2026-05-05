@@ -74,7 +74,56 @@ const Demo = () => {
   const [error, setError] = useState<string | null>(null);
   const [lastInput, setLastInput] = useState<string>("");
   const [mode, setMode] = useState<SolverMode>(() => loadMode());
+  const [siteKey, setSiteKey] = useState<string | null>(null);
+  const [captchaReady, setCaptchaReady] = useState(false);
+  const captchaTokenRef = useRef<string | null>(null);
+  const widgetIdRef = useRef<string | null>(null);
+  const captchaContainerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Fetch site key + load Turnstile script once
+  useEffect(() => {
+    let cancelled = false;
+    fetch(DEMO_URL, { method: "GET" })
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d?.siteKey) setSiteKey(d.siteKey); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!siteKey) return;
+    const SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    const exists = document.querySelector(`script[src="${SRC}"]`);
+    const onLoad = () => {
+      if (!captchaContainerRef.current || !window.turnstile) return;
+      if (widgetIdRef.current) return;
+      widgetIdRef.current = window.turnstile.render(captchaContainerRef.current, {
+        sitekey: siteKey,
+        theme: "auto",
+        size: "flexible",
+        callback: (token) => {
+          captchaTokenRef.current = token;
+          setCaptchaReady(true);
+        },
+        "expired-callback": () => {
+          captchaTokenRef.current = null;
+          setCaptchaReady(false);
+        },
+        "error-callback": () => {
+          captchaTokenRef.current = null;
+          setCaptchaReady(false);
+        },
+      });
+    };
+    if (exists) { onLoad(); return; }
+    const s = document.createElement("script");
+    s.src = SRC;
+    s.async = true;
+    s.defer = true;
+    s.onload = onLoad;
+    document.head.appendChild(s);
+  }, [siteKey]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -83,6 +132,18 @@ const Demo = () => {
   const stream = async (userText: string) => {
     setError(null);
     setLastInput(userText);
+
+    const token = captchaTokenRef.current;
+    if (!token) {
+      setError(t("demo.captchaRequired", "Please complete the CAPTCHA below."));
+      return;
+    }
+
+    const userMsg: Msg = { role: "user", content: userText };
+    const updated = [...messages, userMsg];
+    setMessages(updated);
+    setInput("");
+    setIsStreaming(true);
 
     const userMsg: Msg = { role: "user", content: userText };
     const updated = [...messages, userMsg];
