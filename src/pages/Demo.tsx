@@ -272,7 +272,7 @@ const Demo = () => {
               </div>
               <Button
                 onClick={() => stream(PREFILLED)}
-                disabled={isStreaming}
+                disabled={isStreaming || !captchaReady}
                 className="bg-gradient-stemind text-primary-foreground hover:opacity-90"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
