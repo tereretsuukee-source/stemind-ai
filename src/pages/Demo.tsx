@@ -364,6 +364,14 @@ const Demo = () => {
             }}
           />
         </div>
+        <div className="max-w-2xl mx-auto mb-2">
+          <div ref={captchaContainerRef} className="cf-turnstile flex justify-center" />
+          {!siteKey && (
+            <p className="text-[11px] text-muted-foreground text-center mt-1">
+              {t("demo.captchaLoading", "Loading verification…")}
+            </p>
+          )}
+        </div>
         <div className="max-w-2xl mx-auto flex gap-2 items-end">
           <Textarea
             value={input}
@@ -377,7 +385,13 @@ const Demo = () => {
               }
             }}
           />
-          <Button type="submit" size="icon" disabled={!input.trim() || isStreaming} className="shrink-0 bg-primary">
+          <Button
+            type="submit"
+            size="icon"
+            disabled={!input.trim() || isStreaming || !captchaReady}
+            className="shrink-0 bg-primary"
+            title={!captchaReady ? t("demo.captchaRequired", "Please complete the CAPTCHA below.") : undefined}
+          >
             {isStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </div>
