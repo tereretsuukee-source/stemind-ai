@@ -236,6 +236,46 @@ const Demo = () => {
     stream(input.trim());
   };
 
+  const runDiagnostic = async () => {
+    setShowDiag(true);
+    const token = captchaTokenRef.current;
+    if (!token) {
+      setDiag({ status: "fail", reason: "No CAPTCHA token yet — solve the widget first." });
+      return;
+    }
+    setDiag({ status: "running" });
+    try {
+      const resp = await fetch(DEMO_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-turnstile-token": token },
+        body: JSON.stringify({ diagnose: true, turnstileToken: token, messages: [{ role: "user", content: "ping" }] }),
+      });
+      const data = await resp.json();
+      if (data?.success) {
+        setDiag({
+          status: "ok",
+          hostname: data.hostname ?? null,
+          challenge_ts: data.challenge_ts ?? null,
+          observedIp: data.observedIp ?? "unknown",
+        });
+      } else {
+        setDiag({
+          status: "fail",
+          reason: data?.siteverifyError || "Turnstile siteverify rejected the token.",
+          errorCodes: data?.errorCodes,
+          hostname: data?.hostname,
+        });
+      }
+    } catch (e) {
+      setDiag({ status: "fail", reason: e instanceof Error ? e.message : "Network error" });
+    } finally {
+      // Token consumed — reset widget so the user can submit a real query next
+      captchaTokenRef.current = null;
+      setCaptchaReady(false);
+      try { window.turnstile?.reset(widgetIdRef.current ?? undefined); } catch { /* noop */ }
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Header */}
