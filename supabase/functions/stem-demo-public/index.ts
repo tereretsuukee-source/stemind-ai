@@ -133,8 +133,8 @@ serve(async (req) => {
     try { body = JSON.parse(raw); } catch { return json({ error: "Invalid JSON body" }, 400); }
     if (!body || typeof body !== "object") return json({ error: "Invalid request body" }, 400);
 
-    const { messages, language, mode, turnstileToken } = body as {
-      messages?: unknown; language?: unknown; mode?: unknown; turnstileToken?: unknown;
+    const { messages, language, mode, turnstileToken, diagnose } = body as {
+      messages?: unknown; language?: unknown; mode?: unknown; turnstileToken?: unknown; diagnose?: unknown;
     };
 
     // Accept token from header or body
