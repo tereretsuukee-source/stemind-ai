@@ -59,19 +59,19 @@ const MAX_MSG_CHARS = 2000;
 
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
-async function verifyTurnstile(token: string, ip: string, secret: string): Promise<boolean> {
+async function verifyTurnstile(token: string, ip: string, secret: string): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
     const form = new FormData();
     form.append("secret", secret);
     form.append("response", token);
     if (ip && ip !== "unknown") form.append("remoteip", ip);
     const res = await fetch(TURNSTILE_VERIFY_URL, { method: "POST", body: form });
-    if (!res.ok) return false;
+    if (!res.ok) return { success: false, error: `siteverify HTTP ${res.status}` };
     const data = await res.json();
-    return data?.success === true;
+    return { success: data?.success === true, data };
   } catch (e) {
     console.error("turnstile verify failed:", e);
-    return false;
+    return { success: false, error: String(e) };
   }
 }
 
@@ -133,8 +133,8 @@ serve(async (req) => {
     try { body = JSON.parse(raw); } catch { return json({ error: "Invalid JSON body" }, 400); }
     if (!body || typeof body !== "object") return json({ error: "Invalid request body" }, 400);
 
-    const { messages, language, mode, turnstileToken } = body as {
-      messages?: unknown; language?: unknown; mode?: unknown; turnstileToken?: unknown;
+    const { messages, language, mode, turnstileToken, diagnose } = body as {
+      messages?: unknown; language?: unknown; mode?: unknown; turnstileToken?: unknown; diagnose?: unknown;
     };
 
     // Accept token from header or body
@@ -145,14 +145,27 @@ serve(async (req) => {
       return json({ error: "CAPTCHA required" }, 401);
     }
 
-    // Replay protection (sweep + reject if seen)
+    // Replay protection (sweep + reject if seen) — skip for diagnose mode
     for (const [k, t] of usedTokens) if (t < now - TOKEN_TTL_MS) usedTokens.delete(k);
-    if (usedTokens.has(token)) {
+    if (!diagnose && usedTokens.has(token)) {
       return json({ error: "CAPTCHA token already used" }, 401);
     }
 
-    const ok = await verifyTurnstile(token, ip, TURNSTILE_SECRET);
-    if (!ok) return json({ error: "CAPTCHA verification failed" }, 401);
+    const verifyResult = await verifyTurnstile(token, ip, TURNSTILE_SECRET);
+
+    if (diagnose === true) {
+      return json({
+        success: verifyResult.success,
+        hostname: verifyResult.data?.hostname ?? null,
+        challenge_ts: verifyResult.data?.challenge_ts ?? null,
+        action: verifyResult.data?.action ?? null,
+        errorCodes: verifyResult.data?.["error-codes"] ?? [],
+        siteverifyError: verifyResult.error ?? null,
+        observedIp: ip,
+      }, 200);
+    }
+
+    if (!verifyResult.success) return json({ error: "CAPTCHA verification failed" }, 401);
     usedTokens.set(token, now);
 
     if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES) {

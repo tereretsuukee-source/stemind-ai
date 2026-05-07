@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Send, Loader2, Sparkles, Bot, Lock, AlertTriangle, RefreshCw } from "lucide-react";
+import { ArrowLeft, Send, Loader2, Sparkles, Bot, Lock, AlertTriangle, RefreshCw, ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
 import "katex/dist/katex.min.css";
 import { BlockMath, InlineMath } from "react-katex";
 import ReactMarkdown from "react-markdown";
@@ -80,6 +80,14 @@ const Demo = () => {
   const widgetIdRef = useRef<string | null>(null);
   const captchaContainerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  type DiagState =
+    | { status: "idle" }
+    | { status: "running" }
+    | { status: "ok"; hostname: string | null; challenge_ts: string | null; observedIp: string }
+    | { status: "fail"; reason: string; errorCodes?: string[]; hostname?: string | null };
+  const [diag, setDiag] = useState<DiagState>({ status: "idle" });
+  const [showDiag, setShowDiag] = useState(false);
 
   // Fetch site key + load Turnstile script once
   useEffect(() => {
@@ -228,6 +236,46 @@ const Demo = () => {
     stream(input.trim());
   };
 
+  const runDiagnostic = async () => {
+    setShowDiag(true);
+    const token = captchaTokenRef.current;
+    if (!token) {
+      setDiag({ status: "fail", reason: "No CAPTCHA token yet — solve the widget first." });
+      return;
+    }
+    setDiag({ status: "running" });
+    try {
+      const resp = await fetch(DEMO_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-turnstile-token": token },
+        body: JSON.stringify({ diagnose: true, turnstileToken: token, messages: [{ role: "user", content: "ping" }] }),
+      });
+      const data = await resp.json();
+      if (data?.success) {
+        setDiag({
+          status: "ok",
+          hostname: data.hostname ?? null,
+          challenge_ts: data.challenge_ts ?? null,
+          observedIp: data.observedIp ?? "unknown",
+        });
+      } else {
+        setDiag({
+          status: "fail",
+          reason: data?.siteverifyError || "Turnstile siteverify rejected the token.",
+          errorCodes: data?.errorCodes,
+          hostname: data?.hostname,
+        });
+      }
+    } catch (e) {
+      setDiag({ status: "fail", reason: e instanceof Error ? e.message : "Network error" });
+    } finally {
+      // Token consumed — reset widget so the user can submit a real query next
+      captchaTokenRef.current = null;
+      setCaptchaReady(false);
+      try { window.turnstile?.reset(widgetIdRef.current ?? undefined); } catch { /* noop */ }
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Header */}
@@ -370,6 +418,59 @@ const Demo = () => {
             <p className="text-[11px] text-muted-foreground text-center mt-1">
               {t("demo.captchaLoading", "Loading verification…")}
             </p>
+          )}
+          <div className="flex items-center justify-center gap-3 mt-1">
+            <span className="text-[10px] text-muted-foreground">
+              host: <code>{typeof window !== "undefined" ? window.location.hostname : "?"}</code>
+              {siteKey && <> · key: <code>{siteKey.slice(0, 12)}…</code></>}
+            </span>
+            <button
+              type="button"
+              onClick={runDiagnostic}
+              className="text-[10px] underline text-muted-foreground hover:text-foreground"
+            >
+              Validate domain/key
+            </button>
+          </div>
+          {showDiag && (
+            <div className="mt-2 rounded-md border border-border/60 bg-card/60 p-2 text-[11px] space-y-1">
+              <div className="flex items-center gap-1.5 font-medium">
+                {diag.status === "ok" && <ShieldCheck className="w-3.5 h-3.5 text-green-500" />}
+                {diag.status === "fail" && <ShieldAlert className="w-3.5 h-3.5 text-destructive" />}
+                {(diag.status === "idle" || diag.status === "running") && (
+                  <ShieldQuestion className="w-3.5 h-3.5 text-muted-foreground" />
+                )}
+                Turnstile validation
+                <button
+                  type="button"
+                  className="ml-auto text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowDiag(false)}
+                  aria-label="Close diagnostics"
+                >×</button>
+              </div>
+              {diag.status === "running" && <p className="text-muted-foreground">Verifying token with siteverify…</p>}
+              {diag.status === "ok" && (
+                <div className="text-muted-foreground space-y-0.5">
+                  <div>✅ Site key authorized for hostname <code className="text-foreground">{diag.hostname ?? "(none returned)"}</code></div>
+                  <div>Issued at: <code>{diag.challenge_ts}</code></div>
+                  <div>Observed IP: <code>{diag.observedIp}</code></div>
+                  <p className="pt-1">You can now submit queries.</p>
+                </div>
+              )}
+              {diag.status === "fail" && (
+                <div className="text-muted-foreground space-y-0.5">
+                  <div className="text-destructive">❌ {diag.reason}</div>
+                  {diag.errorCodes && diag.errorCodes.length > 0 && (
+                    <div>Codes: <code>{diag.errorCodes.join(", ")}</code></div>
+                  )}
+                  {diag.hostname && <div>Reported hostname: <code>{diag.hostname}</code></div>}
+                  <p className="pt-1">
+                    Add the current host (<code>{typeof window !== "undefined" ? window.location.hostname : "?"}</code>) to
+                    the allowlist of this site key in the Cloudflare Turnstile dashboard, then re-solve and validate again.
+                  </p>
+                </div>
+              )}
+            </div>
           )}
         </div>
         <div className="max-w-2xl mx-auto flex gap-2 items-end">
