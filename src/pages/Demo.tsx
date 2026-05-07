@@ -81,6 +81,14 @@ const Demo = () => {
   const captchaContainerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  type DiagState =
+    | { status: "idle" }
+    | { status: "running" }
+    | { status: "ok"; hostname: string | null; challenge_ts: string | null; observedIp: string }
+    | { status: "fail"; reason: string; errorCodes?: string[]; hostname?: string | null };
+  const [diag, setDiag] = useState<DiagState>({ status: "idle" });
+  const [showDiag, setShowDiag] = useState(false);
+
   // Fetch site key + load Turnstile script once
   useEffect(() => {
     let cancelled = false;
