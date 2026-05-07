@@ -419,6 +419,59 @@ const Demo = () => {
               {t("demo.captchaLoading", "Loading verification…")}
             </p>
           )}
+          <div className="flex items-center justify-center gap-3 mt-1">
+            <span className="text-[10px] text-muted-foreground">
+              host: <code>{typeof window !== "undefined" ? window.location.hostname : "?"}</code>
+              {siteKey && <> · key: <code>{siteKey.slice(0, 12)}…</code></>}
+            </span>
+            <button
+              type="button"
+              onClick={runDiagnostic}
+              className="text-[10px] underline text-muted-foreground hover:text-foreground"
+            >
+              Validate domain/key
+            </button>
+          </div>
+          {showDiag && (
+            <div className="mt-2 rounded-md border border-border/60 bg-card/60 p-2 text-[11px] space-y-1">
+              <div className="flex items-center gap-1.5 font-medium">
+                {diag.status === "ok" && <ShieldCheck className="w-3.5 h-3.5 text-green-500" />}
+                {diag.status === "fail" && <ShieldAlert className="w-3.5 h-3.5 text-destructive" />}
+                {(diag.status === "idle" || diag.status === "running") && (
+                  <ShieldQuestion className="w-3.5 h-3.5 text-muted-foreground" />
+                )}
+                Turnstile validation
+                <button
+                  type="button"
+                  className="ml-auto text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowDiag(false)}
+                  aria-label="Close diagnostics"
+                >×</button>
+              </div>
+              {diag.status === "running" && <p className="text-muted-foreground">Verifying token with siteverify…</p>}
+              {diag.status === "ok" && (
+                <div className="text-muted-foreground space-y-0.5">
+                  <div>✅ Site key authorized for hostname <code className="text-foreground">{diag.hostname ?? "(none returned)"}</code></div>
+                  <div>Issued at: <code>{diag.challenge_ts}</code></div>
+                  <div>Observed IP: <code>{diag.observedIp}</code></div>
+                  <p className="pt-1">You can now submit queries.</p>
+                </div>
+              )}
+              {diag.status === "fail" && (
+                <div className="text-muted-foreground space-y-0.5">
+                  <div className="text-destructive">❌ {diag.reason}</div>
+                  {diag.errorCodes && diag.errorCodes.length > 0 && (
+                    <div>Codes: <code>{diag.errorCodes.join(", ")}</code></div>
+                  )}
+                  {diag.hostname && <div>Reported hostname: <code>{diag.hostname}</code></div>}
+                  <p className="pt-1">
+                    Add the current host (<code>{typeof window !== "undefined" ? window.location.hostname : "?"}</code>) to
+                    the allowlist of this site key in the Cloudflare Turnstile dashboard, then re-solve and validate again.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <div className="max-w-2xl mx-auto flex gap-2 items-end">
           <Textarea
