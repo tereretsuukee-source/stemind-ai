@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Send, Loader2, Sparkles, Bot, Lock, AlertTriangle, RefreshCw } from "lucide-react";
+import { ArrowLeft, Send, Loader2, Sparkles, Bot, Lock, AlertTriangle, RefreshCw, ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
 import "katex/dist/katex.min.css";
 import { BlockMath, InlineMath } from "react-katex";
 import ReactMarkdown from "react-markdown";
