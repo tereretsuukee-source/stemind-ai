@@ -59,19 +59,19 @@ const MAX_MSG_CHARS = 2000;
 
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
-async function verifyTurnstile(token: string, ip: string, secret: string): Promise<boolean> {
+async function verifyTurnstile(token: string, ip: string, secret: string): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
     const form = new FormData();
     form.append("secret", secret);
     form.append("response", token);
     if (ip && ip !== "unknown") form.append("remoteip", ip);
     const res = await fetch(TURNSTILE_VERIFY_URL, { method: "POST", body: form });
-    if (!res.ok) return false;
+    if (!res.ok) return { success: false, error: `siteverify HTTP ${res.status}` };
     const data = await res.json();
-    return data?.success === true;
+    return { success: data?.success === true, data };
   } catch (e) {
     console.error("turnstile verify failed:", e);
-    return false;
+    return { success: false, error: String(e) };
   }
 }
 
