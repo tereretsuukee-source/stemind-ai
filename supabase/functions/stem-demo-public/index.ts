@@ -145,14 +145,27 @@ serve(async (req) => {
       return json({ error: "CAPTCHA required" }, 401);
     }
 
-    // Replay protection (sweep + reject if seen)
+    // Replay protection (sweep + reject if seen) — skip for diagnose mode
     for (const [k, t] of usedTokens) if (t < now - TOKEN_TTL_MS) usedTokens.delete(k);
-    if (usedTokens.has(token)) {
+    if (!diagnose && usedTokens.has(token)) {
       return json({ error: "CAPTCHA token already used" }, 401);
     }
 
-    const ok = await verifyTurnstile(token, ip, TURNSTILE_SECRET);
-    if (!ok) return json({ error: "CAPTCHA verification failed" }, 401);
+    const verifyResult = await verifyTurnstile(token, ip, TURNSTILE_SECRET);
+
+    if (diagnose === true) {
+      return json({
+        success: verifyResult.success,
+        hostname: verifyResult.data?.hostname ?? null,
+        challenge_ts: verifyResult.data?.challenge_ts ?? null,
+        action: verifyResult.data?.action ?? null,
+        errorCodes: verifyResult.data?.["error-codes"] ?? [],
+        siteverifyError: verifyResult.error ?? null,
+        observedIp: ip,
+      }, 200);
+    }
+
+    if (!verifyResult.success) return json({ error: "CAPTCHA verification failed" }, 401);
     usedTokens.set(token, now);
 
     if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES) {
