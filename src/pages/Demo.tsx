@@ -192,6 +192,21 @@ const Demo = () => {
           if (jsonStr === "[DONE]") break;
           try {
             const parsed = JSON.parse(jsonStr);
+            // Server-emitted validation sentinel (no choices field)
+            if (parsed.validation && typeof parsed.validation === "object") {
+              const v = parsed.validation as { valid: boolean; reasons: string[]; finalAnswer: string };
+              if (!v.valid) {
+                console.warn("[stem-demo] validation failed:", v.reasons);
+                setError(
+                  t(
+                    "demo.validationFailed",
+                    "The answer didn't meet quality checks ({{reasons}}). Please try again.",
+                    { reasons: v.reasons.join(", ") }
+                  )
+                );
+              }
+              continue;
+            }
             const content = parsed.choices?.[0]?.delta?.content as string | undefined;
             if (content) {
               assistantSoFar += content;
