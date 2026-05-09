@@ -206,7 +206,69 @@ serve(async (req) => {
       return json({ error: "Demo temporarily unavailable." }, 502);
     }
 
-    return new Response(aiResponse.body, {
+    // Wrap upstream stream: pass-through chunks, assemble content, then emit
+    // a final [[VALIDATION]] sentinel SSE event with strict checks before [DONE].
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    let assembled = "";
+    let sseBuf = "";
+    let sawDone = false;
+
+    const validate = (text: string) => {
+      const reasons: string[] = [];
+      const trimmed = text.trim();
+      if (trimmed.length < 20) reasons.push("response_too_short");
+
+      const finalRegex = /\*\*Final answer:\*\*\s*(.+?)(?:\n|$)/gi;
+      const matches = [...trimmed.matchAll(finalRegex)].map((m) => m[1].trim());
+      const finalAnswer = matches.length ? matches[matches.length - 1] : "";
+      if (!finalAnswer) reasons.push("missing_final_answer");
+
+      const placeholderRe = /(^|[^a-z])(_?pending_?|tbd|unknown|to\s*be\s*determined|n\/a|\?{2,})($|[^a-z])/i;
+      if (finalAnswer && placeholderRe.test(finalAnswer)) reasons.push("placeholder_final_answer");
+      if (placeholderRe.test(trimmed)) reasons.push("placeholder_in_body");
+
+      // Balanced LaTeX delimiters (best-effort)
+      const dollarCount = (trimmed.match(/(?<!\\)\$/g) ?? []).length;
+      if (dollarCount % 2 !== 0) reasons.push("unbalanced_latex");
+
+      return {
+        valid: reasons.length === 0,
+        reasons,
+        finalAnswer,
+        length: trimmed.length,
+      };
+    };
+
+    const transform = new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        // Pass through immediately
+        controller.enqueue(chunk);
+        sseBuf += decoder.decode(chunk, { stream: true });
+        let idx: number;
+        while ((idx = sseBuf.indexOf("\n")) !== -1) {
+          let line = sseBuf.slice(0, idx);
+          sseBuf = sseBuf.slice(idx + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6).trim();
+          if (payload === "[DONE]") { sawDone = true; continue; }
+          try {
+            const p = JSON.parse(payload);
+            const c = p?.choices?.[0]?.delta?.content;
+            if (typeof c === "string") assembled += c;
+          } catch { /* ignore partial */ }
+        }
+      },
+      flush(controller) {
+        const v = validate(assembled);
+        const sentinel = `data: ${JSON.stringify({ validation: v })}\n\n`;
+        controller.enqueue(encoder.encode(sentinel));
+        if (!sawDone) controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+      },
+    });
+
+    return new Response(aiResponse.body!.pipeThrough(transform), {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-store" },
     });
   } catch (e) {
