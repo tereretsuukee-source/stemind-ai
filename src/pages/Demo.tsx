@@ -88,6 +88,8 @@ const Demo = () => {
     | { status: "fail"; reason: string; errorCodes?: string[]; hostname?: string | null };
   const [diag, setDiag] = useState<DiagState>({ status: "idle" });
   const [showDiag, setShowDiag] = useState(false);
+  const [pendingRetry, setPendingRetry] = useState<string | null>(null);
+  const retriedRef = useRef<Set<string>>(new Set());
 
   // Fetch site key + load Turnstile script once
   useEffect(() => {
@@ -197,13 +199,33 @@ const Demo = () => {
               const v = parsed.validation as { valid: boolean; reasons: string[]; finalAnswer: string };
               if (!v.valid) {
                 console.warn("[stem-demo] validation failed:", v.reasons);
-                setError(
-                  t(
-                    "demo.validationFailed",
-                    "The answer didn't meet quality checks ({{reasons}}). Please try again.",
-                    { reasons: v.reasons.join(", ") }
-                  )
-                );
+                const alreadyRetried = retriedRef.current.has(userText);
+                if (!alreadyRetried) {
+                  retriedRef.current.add(userText);
+                  // Drop the failed assistant draft and queue a single auto-retry
+                  setMessages((prev) => {
+                    const next = [...prev];
+                    if (next[next.length - 1]?.role === "assistant") next.pop();
+                    if (next[next.length - 1]?.role === "user" && next[next.length - 1].content === userText) next.pop();
+                    return next;
+                  });
+                  setError(
+                    t(
+                      "demo.validationRetrying",
+                      "Quality check failed ({{reasons}}). Regenerating — please re-solve the CAPTCHA.",
+                      { reasons: v.reasons.join(", ") }
+                    )
+                  );
+                  setPendingRetry(userText);
+                } else {
+                  setError(
+                    t(
+                      "demo.validationFailed",
+                      "The answer didn't meet quality checks ({{reasons}}). Please try again.",
+                      { reasons: v.reasons.join(", ") }
+                    )
+                  );
+                }
               }
               continue;
             }
@@ -248,8 +270,21 @@ const Demo = () => {
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isStreaming) return;
-    stream(input.trim());
+    const text = input.trim();
+    // Fresh question = fresh retry budget
+    retriedRef.current.delete(text);
+    stream(text);
   };
+
+  // Bounded auto-retry: when validation failed and user re-solves the CAPTCHA, fire once.
+  useEffect(() => {
+    if (pendingRetry && captchaReady && !isStreaming) {
+      const text = pendingRetry;
+      setPendingRetry(null);
+      stream(text);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingRetry, captchaReady, isStreaming]);
 
   const runDiagnostic = async () => {
     setShowDiag(true);
