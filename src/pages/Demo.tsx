@@ -270,8 +270,21 @@ const Demo = () => {
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isStreaming) return;
-    stream(input.trim());
+    const text = input.trim();
+    // Fresh question = fresh retry budget
+    retriedRef.current.delete(text);
+    stream(text);
   };
+
+  // Bounded auto-retry: when validation failed and user re-solves the CAPTCHA, fire once.
+  useEffect(() => {
+    if (pendingRetry && captchaReady && !isStreaming) {
+      const text = pendingRetry;
+      setPendingRetry(null);
+      stream(text);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingRetry, captchaReady, isStreaming]);
 
   const runDiagnostic = async () => {
     setShowDiag(true);
