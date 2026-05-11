@@ -88,6 +88,8 @@ const Demo = () => {
     | { status: "fail"; reason: string; errorCodes?: string[]; hostname?: string | null };
   const [diag, setDiag] = useState<DiagState>({ status: "idle" });
   const [showDiag, setShowDiag] = useState(false);
+  const [pendingRetry, setPendingRetry] = useState<string | null>(null);
+  const retriedRef = useRef<Set<string>>(new Set());
 
   // Fetch site key + load Turnstile script once
   useEffect(() => {
