@@ -1,20 +1,49 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  // Strip identifying server fingerprints where possible
-  "X-Content-Type-Options": "nosniff",
-  "Referrer-Policy": "no-referrer",
-};
+// Strict CORS allow-list. Browser origins not on this list get NO
+// Access-Control-Allow-Origin header (browser blocks the response) and
+// preflights are rejected with 403.
+const ALLOWED_ORIGINS = new Set<string>([
+  "https://stemind.lovable.app",
+  "https://id-preview--4775df88-a536-453b-ac3b-086b8e2115e5.lovable.app",
+  "http://localhost:5173",
+  "http://localhost:8080",
+]);
+const ALLOWED_ORIGIN_SUFFIXES = [".lovable.app", ".lovableproject.com"];
 
-const json = (body: unknown, status: number, extra: Record<string, string> = {}) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json", ...extra },
-  });
+function isAllowedOrigin(origin: string): boolean {
+  if (!origin) return false;
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  try {
+    const host = new URL(origin).hostname;
+    return ALLOWED_ORIGIN_SUFFIXES.some((s) => host.endsWith(s));
+  } catch {
+    return false;
+  }
+}
+
+function buildCors(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") ?? "";
+  const headers: Record<string, string> = {
+    "Vary": "Origin",
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Max-Age": "600",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+  };
+  if (isAllowedOrigin(origin)) headers["Access-Control-Allow-Origin"] = origin;
+  return headers;
+}
+
+const jsonWith = (cors: Record<string, string>) =>
+  (body: unknown, status: number, extra: Record<string, string> = {}) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...cors, "Content-Type": "application/json", ...extra },
+    });
 
 const TUTOR_PROMPT = `You are STEMind, an expert STEM tutor in DEMO mode using the Socratic method.
 
@@ -60,9 +89,21 @@ const MAX_MESSAGES = 8;
 const MAX_MSG_CHARS = 2000;
 
 serve(async (req) => {
-  // CORS preflight
+  const corsHeaders = buildCors(req);
+  const json = jsonWith(corsHeaders);
+  const origin = req.headers.get("origin") ?? "";
+
+  // CORS preflight — reject unknown origins outright
   if (req.method === "OPTIONS") {
+    if (origin && !isAllowedOrigin(origin)) {
+      return new Response("Forbidden origin", { status: 403 });
+    }
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Reject browser-initiated requests from disallowed origins
+  if (origin && !isAllowedOrigin(origin)) {
+    return json({ error: "Forbidden origin" }, 403);
   }
 
   // 405: only POST allowed
