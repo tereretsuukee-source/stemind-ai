@@ -89,9 +89,21 @@ const MAX_MESSAGES = 8;
 const MAX_MSG_CHARS = 2000;
 
 serve(async (req) => {
-  // CORS preflight
+  const corsHeaders = buildCors(req);
+  const json = jsonWith(corsHeaders);
+  const origin = req.headers.get("origin") ?? "";
+
+  // CORS preflight — reject unknown origins outright
   if (req.method === "OPTIONS") {
+    if (origin && !isAllowedOrigin(origin)) {
+      return new Response("Forbidden origin", { status: 403 });
+    }
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Reject browser-initiated requests from disallowed origins
+  if (origin && !isAllowedOrigin(origin)) {
+    return json({ error: "Forbidden origin" }, 403);
   }
 
   // 405: only POST allowed
