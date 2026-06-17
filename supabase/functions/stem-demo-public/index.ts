@@ -1,19 +1,45 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-turnstile-token",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "X-Content-Type-Options": "nosniff",
-  "Referrer-Policy": "no-referrer",
-};
+// Allow-listed browser origins. Non-browser clients (curl/bots) bypass CORS
+// anyway, so this is defence-in-depth for the widget, not an auth boundary.
+const ALLOWED_ORIGINS = new Set<string>([
+  "https://stemind.lovable.app",
+  "https://id-preview--4775df88-a536-453b-ac3b-086b8e2115e5.lovable.app",
+  "http://localhost:5173",
+  "http://localhost:8080",
+]);
+const ALLOWED_ORIGIN_SUFFIXES = [".lovable.app", ".lovableproject.com"];
 
-const json = (body: unknown, status: number, extra: Record<string, string> = {}) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json", ...extra },
-  });
+function resolveOrigin(req: Request): string {
+  const origin = req.headers.get("origin") ?? "";
+  if (!origin) return "https://stemind.lovable.app";
+  if (ALLOWED_ORIGINS.has(origin)) return origin;
+  try {
+    const host = new URL(origin).hostname;
+    if (ALLOWED_ORIGIN_SUFFIXES.some((s) => host.endsWith(s))) return origin;
+  } catch { /* ignore */ }
+  return "https://stemind.lovable.app";
+}
+
+function buildCors(req: Request): Record<string, string> {
+  return {
+    "Access-Control-Allow-Origin": resolveOrigin(req),
+    "Vary": "Origin",
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-turnstile-token",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Max-Age": "600",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+  };
+}
+
+const jsonWith = (cors: Record<string, string>) =>
+  (body: unknown, status: number, extra: Record<string, string> = {}) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...cors, "Content-Type": "application/json", ...extra },
+    });
 
 const TUTOR_PROMPT = `You are STEMind, an expert STEM tutor in DEMO mode using the Socratic method.
 
@@ -76,6 +102,8 @@ async function verifyTurnstile(token: string, ip: string, secret: string): Promi
 }
 
 serve(async (req) => {
+  const corsHeaders = buildCors(req);
+  const json = jsonWith(corsHeaders);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   // GET /config → publish site key for the browser widget
