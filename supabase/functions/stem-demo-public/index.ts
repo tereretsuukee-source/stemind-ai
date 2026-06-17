@@ -102,6 +102,8 @@ async function verifyTurnstile(token: string, ip: string, secret: string): Promi
 }
 
 serve(async (req) => {
+  const corsHeaders = buildCors(req);
+  const json = jsonWith(corsHeaders);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   // GET /config → publish site key for the browser widget
