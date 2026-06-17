@@ -34,11 +34,12 @@ function buildCors(req: Request): Record<string, string> {
   };
 }
 
-const json = (body: unknown, status: number, extra: Record<string, string> = {}) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json", ...extra },
-  });
+const jsonWith = (cors: Record<string, string>) =>
+  (body: unknown, status: number, extra: Record<string, string> = {}) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...cors, "Content-Type": "application/json", ...extra },
+    });
 
 const TUTOR_PROMPT = `You are STEMind, an expert STEM tutor in DEMO mode using the Socratic method.
 
