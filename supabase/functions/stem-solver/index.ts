@@ -69,8 +69,21 @@ const ANSWER_PROMPT = `You are STEMind, an expert STEM solver. The student wants
 CRITICAL: NEVER write "_pending_", "TBD", "unknown", or any placeholder as the final answer.`;
 
 serve(async (req) => {
+  const corsHeaders = buildCors(req);
+  const origin = req.headers.get("origin") ?? "";
+
   if (req.method === "OPTIONS") {
+    if (origin && !isAllowedOrigin(origin)) {
+      return new Response("Forbidden origin", { status: 403 });
+    }
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (origin && !isAllowedOrigin(origin)) {
+    return new Response(JSON.stringify({ error: "Forbidden origin" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   try {
